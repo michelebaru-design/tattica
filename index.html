@@ -500,16 +500,65 @@ function exportPNG(){
   },'image/png');
 }
 function dlBlob(b,n){const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);document.getElementById('status').textContent='✅ Salvato!';}
-function exportGIF(){
-  if(S.frames.length<2){alert('Prima registra con ⏺ REC\nServono almeno 2 frame.');return;}
+async function exportGIF(){
+  if(S.frames.length<2){alert('Registra almeno 2 frame con ⏺ REC\nServono almeno 2 frame.');return;}
   document.getElementById('mod-gif').style.display='flex';
+  document.getElementById('gif-pb').style.width='0%';
+  document.getElementById('gif-st').textContent='Caricamento encoder...';
+
   try{
-    const gif=new GIF({workers:2,quality:8,width:cvs.width,height:cvs.height,workerScript:'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'});
-    S.frames.forEach(f=>{const tc=document.createElement('canvas');tc.width=cvs.width;tc.height=cvs.height;tc.getContext('2d').putImageData(f.id,0,0);gif.addFrame(tc,{copy:true,delay:500});});
-    gif.on('progress',p=>{document.getElementById('gif-pb').style.width=Math.round(p*100)+'%';document.getElementById('gif-st').textContent='Elaborazione '+Math.round(p*100)+'%...';});
-    gif.on('finished',b=>{document.getElementById('mod-gif').style.display='none';dlBlob(b,'schema-animato.gif');document.getElementById('status').textContent='✅ GIF creata!';});
+    /* Fix CORS: carica worker come Blob URL locale */
+    let workerURL='';
+    try{
+      const resp=await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      const text=await resp.text();
+      const blob=new Blob([text],{type:'text/javascript'});
+      workerURL=URL.createObjectURL(blob);
+    }catch(fetchErr){
+      throw new Error('Worker non scaricabile: '+fetchErr.message);
+    }
+
+    document.getElementById('gif-st').textContent='Preparazione frame...';
+
+    const gif=new GIF({
+      workers:2,quality:8,
+      width:cvs.width,height:cvs.height,
+      workerScript:workerURL
+    });
+
+    S.frames.forEach(f=>{
+      const tc=document.createElement('canvas');
+      tc.width=cvs.width;tc.height=cvs.height;
+      tc.getContext('2d').putImageData(f.id,0,0);
+      gif.addFrame(tc,{copy:true,delay:500});
+    });
+
+    /* Timeout 60s per sicurezza */
+    const tOut=setTimeout(()=>{
+      document.getElementById('mod-gif').style.display='none';
+      alert('Timeout: GIF troppo complessa.\nUsa 📸 per salvare come immagine.');
+    },60000);
+
+    gif.on('progress',p=>{
+      document.getElementById('gif-pb').style.width=Math.round(p*100)+'%';
+      document.getElementById('gif-st').textContent='Creazione '+Math.round(p*100)+'%...';
+    });
+
+    gif.on('finished',b=>{
+      clearTimeout(tOut);
+      URL.revokeObjectURL(workerURL);
+      document.getElementById('mod-gif').style.display='none';
+      dlBlob(b,'schema-animato-'+Date.now()+'.gif');
+      document.getElementById('status').textContent='✅ GIF creata! '+S.frames.length+' frame';
+    });
+
     gif.render();
-  }catch(e){document.getElementById('mod-gif').style.display='none';alert('GIF non disponibile.');}
+
+  }catch(e){
+    document.getElementById('mod-gif').style.display='none';
+    alert('GIF non disponibile:\n'+e.message+'\n\nUsa 📸 per salvare il campo come immagine.');
+  }
 }
 
 /* ═══════════ SQUADRE MODAL ═══════════ */
