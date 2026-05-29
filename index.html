@@ -71,8 +71,9 @@ select.inp{cursor:pointer;}
       <button class="btn bt" id="t-pass" onclick="setTool('pass')" style="color:#ffdd00;border-color:#713f12">➡ PASS</button>
       <button class="btn bt" id="t-run" onclick="setTool('run')" style="color:#00b4ff;border-color:#1e3a5f">⤷ CORSA</button>
       <button class="btn bt" id="t-shot" onclick="setTool('shot')" style="color:#ff3b30;border-color:#7f1d1d">⚡ TIRO</button>
-      <button class="btn bt" id="t-rec" onclick="setTool('rec')" style="color:#d0d0d0;border-color:#555">⬛ RECUP.</button>
+      <button class="btn bt" id="t-rec" onclick="setTool('rec')" style="color:#d0d0d0;border-color:#555">🛡️ S.DIFESA</button>
       <button class="btn bt" id="t-sav" onclick="setTool('sav')" style="color:#fbbf24;border-color:#92400e">⭐ PARATA</button>
+      <button class="btn bt" id="t-gol" onclick="setTool('gol')" style="color:#fb923c;border-color:#9a3412">🔥 SUPERGOL</button>
       <button class="btn bt" id="t-era" onclick="setTool('era')">✕ ERA</button>
     </div>
     <div class="tr" style="margin-top:4px">
@@ -88,10 +89,9 @@ select.inp{cursor:pointer;}
       <div class="li"><div class="ld" style="background:#ffdd00"></div>Pass</div>
       <div class="li"><div class="ld" style="background:#00b4ff"></div>Corsa</div>
       <div class="li"><div class="ld" style="background:#ff3b30"></div>Tiro</div>
-      <div class="li"><div class="ld" style="background:#333;border:1px solid #666"></div>Recup.</div>
-      <div class="li"><div class="ld" style="background:#fbbf24"></div>⭐</div>
-      <div class="li" style="margin-left:auto"><div class="ld" style="background:#bdbdbd;border:1px solid #757575"></div>⚪</div>
-      <div class="li"><div class="ld" style="background:#111;border:1px solid #555"></div>⚫</div>
+      <div class="li"><div class="ld" style="background:#FF6B00;border:1px solid #b34400"></div>Parata</div>
+      <div class="li"><div class="ld" style="background:#111;border:1px solid #ef4444"></div>Gol</div>
+      <div class="li"><div class="ld" style="background:#1e3a8a;border:1px solid #f59e0b"></div>Difesa</div>
     </div>
   </div>
 </div>
@@ -180,6 +180,8 @@ const S={
   players:[],arrows:[],
   ball:null,draggingBall:false,
   stars:[],
+  gols:[],
+  difs:[],            // [{x,y}] scudi superdifesa
   history:[],
   extraPlayers:[],  // giocatori aggiunti manualmente
   dragging:null,dragOff:{x:0,y:0},drawArrow:null,
@@ -250,27 +252,175 @@ function drawCampo(c,fx,fy,fw,fh){
   c.fillText('BIANCHI',fx+fw/2,fy+fh-m-fh*.03);
 }
 
-/* ═══════════ SUPERPARATA ═══════════ */
-function drawStars(){S.stars.forEach(s=>drawSuperParata(s.x,s.y));}
-function drawSuperParata(x,y){
-  const r=cvs.width/PR*.055;ctx.save();
-  const gw=ctx.createRadialGradient(x,y,r*.2,x,y,r*2.8);
-  gw.addColorStop(0,'rgba(255,215,0,.55)');gw.addColorStop(.5,'rgba(255,180,0,.2)');gw.addColorStop(1,'rgba(255,180,0,0)');
-  ctx.fillStyle=gw;ctx.beginPath();ctx.arc(x,y,r*2.8,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#fbbf24';ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;
-  sPth(x,y,r,r*.42,6);ctx.fill();ctx.stroke();
-  ctx.fillStyle='rgba(255,255,255,.38)';sPth(x-r*.08,y-r*.1,r*.55,r*.22,6);ctx.fill();
-  ctx.fillStyle='#fff176';ctx.strokeStyle='#fbbf24';ctx.lineWidth=.5;
-  for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2-Math.PI/12,pr=r*(i%2===0?.22:.15);sPth(x+Math.cos(a)*r*1.75,y+Math.sin(a)*r*1.75,pr,pr*.4,4);ctx.fill();ctx.stroke();}
-  const fs=Math.max(8,r*.52);ctx.font='700 '+fs+'px Bebas Neue,Barlow Condensed,sans-serif';
+/* ═══════════ HELPER BADGE ═══════════ */
+function badge(dy,txt,col,r){
+  const fs=Math.max(7,r*.5);
+  ctx.font='700 '+fs+'px Bebas Neue,Barlow Condensed,sans-serif';
   ctx.textAlign='center';ctx.textBaseline='middle';
-  const tw=ctx.measureText('SUPER PARATA!').width+10,bh=fs+6;
-  ctx.fillStyle='rgba(0,0,0,.75)';ctx.beginPath();ctx.roundRect(x-tw/2,y+r*1.45,tw,bh,4);ctx.fill();
-  ctx.strokeStyle='#fbbf24';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x-tw/2,y+r*1.45,tw,bh,4);ctx.stroke();
-  ctx.fillStyle='#fbbf24';ctx.fillText('SUPER PARATA!',x,y+r*1.45+bh/2);
+  const tw=ctx.measureText(txt).width+10,bh=fs+6;
+  ctx.fillStyle='rgba(0,0,0,.78)';ctx.beginPath();ctx.roundRect(-tw/2,dy,tw,bh,4);ctx.fill();
+  ctx.strokeStyle=col;ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(-tw/2,dy,tw,bh,4);ctx.stroke();
+  ctx.fillStyle=col;ctx.fillText(txt,0,dy+bh/2);
+}
+
+/* ═══════════ ⭐ GUANTONE PORTIERE ═══════════ */
+function drawStars(){S.stars.forEach(s=>drawGuantone(s.x,s.y));}
+function drawGuantone(x,y){
+  const r=cvs.width/PR*.055;ctx.save();ctx.translate(x,y);
+  // Alone giallo
+  const gw=ctx.createRadialGradient(0,0,0,0,0,r*2.6);
+  gw.addColorStop(0,'rgba(255,180,0,.45)');gw.addColorStop(1,'rgba(255,180,0,0)');
+  ctx.fillStyle=gw;ctx.beginPath();ctx.arc(0,0,r*2.6,0,Math.PI*2);ctx.fill();
+  // Aura manga radiante
+  mangaAura(r*1.1,'#ffdd00',12);
+
+  // 4 DITA in cima
+  ctx.fillStyle='#FF6B00';ctx.strokeStyle='#b34400';ctx.lineWidth=.8;
+  const fw=r*.33,fh=r*.68;
+  for(let i=0;i<4;i++){
+    const fx=-r*.62+i*fw*1.06;
+    ctx.beginPath();ctx.roundRect(fx,-r*.52-fh,fw*.88,fh,fw*.44);ctx.fill();ctx.stroke();
+  }
+  // Nocche (ridge tra dita e palmo)
+  ctx.fillStyle='#cc4400';
+  ctx.beginPath();ctx.roundRect(-r*.65,-r*.56,r*1.3,r*.2,r*.06);ctx.fill();
+
+  // POLLICE dx
+  ctx.fillStyle='#FF6B00';ctx.strokeStyle='#b34400';ctx.lineWidth=.8;
+  ctx.beginPath();ctx.ellipse(r*.8,-r*.18,r*.22,r*.42,.35,0,Math.PI*2);ctx.fill();ctx.stroke();
+
+  // PALMO principale
+  ctx.fillStyle='#FF6B00';
+  ctx.beginPath();ctx.roundRect(-r*.72,-r*.42,r*1.44,r*.98,r*.2);ctx.fill();
+  ctx.strokeStyle='#b34400';ctx.lineWidth=1;ctx.stroke();
+
+  // Zona grip (più scura al centro)
+  ctx.fillStyle='#E05000';
+  ctx.beginPath();ctx.roundRect(-r*.56,-r*.3,r*1.12,r*.72,r*.14);ctx.fill();
+
+  // Linee grip
+  ctx.strokeStyle='rgba(255,130,0,.65)';ctx.lineWidth=1;
+  for(let i=0;i<3;i++){
+    ctx.beginPath();ctx.moveTo(-r*.48,-r*.1+i*r*.22);ctx.lineTo(r*.48,-r*.1+i*r*.22);ctx.stroke();
+  }
+
+  // POLSINO nero
+  ctx.fillStyle='#111';
+  ctx.beginPath();ctx.roundRect(-r*.72,r*.5,r*1.44,r*.4,r*.1);ctx.fill();
+  // Velcro line
+  ctx.strokeStyle='#444';ctx.lineWidth=1;ctx.setLineDash([3,2]);
+  ctx.beginPath();ctx.moveTo(-r*.52,r*.7);ctx.lineTo(r*.52,r*.7);ctx.stroke();
+  ctx.setLineDash([]);
+
+  badge(r*1.02,'SUPER PARATA!','#fbbf24',r);
   ctx.restore();
 }
-function sPth(x,y,ou,inn,pts){ctx.beginPath();for(let i=0;i<pts*2;i++){const r2=i%2===0?ou:inn,a=(i/(pts*2))*Math.PI*2-Math.PI/2;i===0?ctx.moveTo(x+Math.cos(a)*r2,y+Math.sin(a)*r2):ctx.lineTo(x+Math.cos(a)*r2,y+Math.sin(a)*r2);}ctx.closePath();}
+
+/* ═══════════ 🔥 SCARPA DA CALCIO ═══════════ */
+function drawGols(){S.gols.forEach(g=>drawScarpa(g.x,g.y));}
+function drawScarpa(x,y){
+  const r=cvs.width/PR*.055;ctx.save();ctx.translate(x,y);
+  // Alone rosso
+  const gw=ctx.createRadialGradient(0,0,0,0,0,r*2.8);
+  gw.addColorStop(0,'rgba(255,60,0,.55)');gw.addColorStop(1,'rgba(255,0,0,0)');
+  ctx.fillStyle=gw;ctx.beginPath();ctx.arc(0,0,r*2.8,0,Math.PI*2);ctx.fill();
+  // Aura manga fuoco
+  mangaAura(r*1.1,'#ff4400',14);
+
+  // Forma principale scarpa (profilo, punta a destra)
+  ctx.fillStyle='#111';ctx.strokeStyle='#333';ctx.lineWidth=1.2;
+  ctx.beginPath();
+  ctx.moveTo(-r*.95,r*.38);         // tallone basso-sx
+  ctx.lineTo(-r*.95,-r*.22);        // tallone alto-sx
+  ctx.quadraticCurveTo(-r*.7,-r*.62,r*.05,-r*.58); // collo
+  ctx.quadraticCurveTo(r*.55,-r*.58,r*.95,-r*.18); // punta alta
+  ctx.lineTo(r*.95,r*.38);          // punta bassa
+  ctx.closePath();ctx.fill();ctx.stroke();
+
+  // Suola
+  ctx.fillStyle='#2a2a2a';
+  ctx.beginPath();ctx.roundRect(-r*.97,r*.32,r*1.94,r*.22,r*.08);ctx.fill();
+
+  // Tacchetti (6 piccoli cerchi)
+  ctx.fillStyle='#888';
+  [-r*.72,-r*.42,-r*.12,r*.18,r*.48,r*.76].forEach(sx=>{
+    ctx.beginPath();ctx.arc(sx,r*.58,r*.09,0,Math.PI*2);ctx.fill();
+  });
+
+  // Collare caviglia (cerchio scuro dietro)
+  ctx.fillStyle='#1a1a1a';ctx.strokeStyle='#333';ctx.lineWidth=1;
+  ctx.beginPath();ctx.ellipse(-r*.7,-r*.28,r*.28,r*.32,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+
+  // Strisce rosse (stile classico)
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=r*.13;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-r*.25,-r*.54);ctx.lineTo(r*.42,-r*.08);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(r*.02,-r*.56);ctx.lineTo(r*.65,-r*.1);ctx.stroke();
+
+  // Lacci
+  ctx.strokeStyle='#f5f5f5';ctx.lineWidth=r*.07;ctx.lineCap='round';
+  for(let i=0;i<3;i++){
+    ctx.beginPath();
+    ctx.moveTo(-r*.18+i*r*.25,-r*.52);ctx.lineTo(-r*.06+i*r*.25,-r*.12);
+    ctx.stroke();
+  }
+
+  badge(r*1.02,'⚽ SUPER GOL!','#fb923c',r);
+  ctx.restore();
+}
+
+/* ═══════════ 🛡️ SCUDO GUERRIERO ═══════════ */
+function drawDifs(){S.difs.forEach(d=>drawScudo(d.x,d.y));}
+function drawScudo(x,y){
+  const r=cvs.width/PR*.055;ctx.save();ctx.translate(x,y);
+  // Alone blu
+  const gw=ctx.createRadialGradient(0,0,0,0,0,r*2.6);
+  gw.addColorStop(0,'rgba(60,100,255,.5)');gw.addColorStop(1,'rgba(60,100,255,0)');
+  ctx.fillStyle=gw;ctx.beginPath();ctx.arc(0,0,r*2.6,0,Math.PI*2);ctx.fill();
+  // Aura manga difesa
+  mangaAura(r*1.1,'#60a5fa',14);
+
+  // Funzione forma scudo (heater shield)
+  function shield(sc=1){
+    const w=r*1.25*sc,t=-r*.88*sc;
+    ctx.beginPath();
+    ctx.moveTo(-w,t);ctx.lineTo(w,t);
+    ctx.quadraticCurveTo(w,r*.15*sc,0,r*.98*sc);
+    ctx.quadraticCurveTo(-w,r*.15*sc,-w,t);
+    ctx.closePath();
+  }
+
+  // Bordo oro
+  ctx.fillStyle='#f59e0b';shield(1.08);ctx.fill();
+  // Corpo scudo blu reale
+  ctx.fillStyle='#1e3a8a';shield(1);ctx.fill();
+
+  // Divisori croce dorata
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=r*.12;
+  ctx.beginPath();ctx.moveTo(0,-r*.88);ctx.lineTo(0,r*.7);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-r*1.1,-r*.1);ctx.lineTo(r*1.1,-r*.1);ctx.stroke();
+
+  // Quadrante alto-sx: rosso
+  ctx.fillStyle='#dc2626';
+  ctx.beginPath();ctx.moveTo(-r*1.24,-r*.9);ctx.lineTo(0,-r*.9);ctx.lineTo(0,-r*.1);ctx.lineTo(-r*1.24,-r*.1);ctx.closePath();ctx.fill();
+  // Quadrante basso-dx: rosso
+  ctx.fillStyle='#dc2626';
+  ctx.beginPath();ctx.moveTo(0,-r*.1);ctx.lineTo(r*.95,-r*.1);ctx.lineTo(0,r*.9);ctx.closePath();ctx.fill();
+
+  // Stella centrale dorata
+  ctx.fillStyle='#f59e0b';
+  sPth(0,-r*.1,r*.3,r*.13,5);ctx.fill();
+
+  // Bordo scudo in cima
+  ctx.strokeStyle='#d97706';ctx.lineWidth=r*.1;shield(1);ctx.stroke();
+  // Rivetti angoli
+  ctx.fillStyle='#f59e0b';
+  [[-r*1.1,-r*.85],[r*1.1,-r*.85]].forEach(([bx,by])=>{
+    ctx.beginPath();ctx.arc(bx,by,r*.1,0,Math.PI*2);ctx.fill();
+  });
+
+  badge(r*1.1,'SUPER DIFESA!','#60a5fa',r);
+  ctx.restore();
+}
 
 /* ═══════════ PALLONE ═══════════ */
 function ballR(){return cvs.width/PR*.026;}
@@ -290,23 +440,232 @@ function drawBall(){
 }
 function bPatch(x,y,r){ctx.beginPath();for(let i=0;i<=5;i++){const a=(i/5)*Math.PI*2;ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);}ctx.closePath();}
 
-/* ═══════════ FRECCE ═══════════ */
-const AS={pass:{c:'#ffdd00',lw:2,d:[],a:.9},run:{c:'#00b4ff',lw:1.8,d:[6,4],a:.85},shot:{c:'#ff3b30',lw:3,d:[],a:.95},rec:{c:'#1a1a1a',lw:2.5,d:[4,3],a:.98}};
+/* ═══════════════════════════════════════════
+   FRECCE STILE MANGA (Capitan Tsubasa / Inazuma)
+═══════════════════════════════════════════ */
+
+// Pseudo-random stabile (no flickering tra frame)
+function sr(a,b,c=0){return Math.abs(Math.sin(a*127.1+b*311.7+c*74.5)*43758.5)%1;}
+
 function drawArrows(){
-  [...S.arrows,...(S.drawArrow?[S.drawArrow]:[])].forEach(a=>{
-    const st=AS[a.type]||AS.pass;
-    const dx=a.x2-a.x1,dy=a.y2-a.y1,len=Math.hypot(dx,dy);if(len<12)return;
-    ctx.save();ctx.globalAlpha=st.a;ctx.strokeStyle=st.c;ctx.fillStyle=st.c;
-    ctx.lineWidth=st.lw;ctx.setLineDash(st.d);ctx.lineCap='round';
-    ctx.beginPath();ctx.moveTo(a.x1,a.y1);ctx.lineTo(a.x2,a.y2);ctx.stroke();
-    ctx.setLineDash([]);
-    const ang=Math.atan2(dy,dx),hs=9+st.lw*2;
-    ctx.beginPath();ctx.moveTo(a.x2,a.y2);
-    ctx.lineTo(a.x2-hs*Math.cos(ang-.4),a.y2-hs*Math.sin(ang-.4));
-    ctx.lineTo(a.x2-hs*Math.cos(ang+.4),a.y2-hs*Math.sin(ang+.4));
-    ctx.closePath();ctx.fill();ctx.restore();
-  });
+  [...S.arrows,...(S.drawArrow?[S.drawArrow]:[])].forEach(drawArrowManga);
 }
+
+function drawArrowManga(a){
+  const dx=a.x2-a.x1,dy=a.y2-a.y1,len=Math.hypot(dx,dy);
+  if(len<12)return;
+  const ang=Math.atan2(dy,dx);
+  const nx=-dy/len,ny=dx/len; // normale perpendicolare
+  const ux=dx/len,uy=dy/len;  // direzione unitaria
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+
+  if(a.type==='pass') mangaPass(a,ang,nx,ny,ux,uy,len);
+  else if(a.type==='run') mangaRun(a,ang,nx,ny,ux,uy,len);
+  else if(a.type==='shot') mangaShot(a,ang,nx,ny,ux,uy,len);
+
+  ctx.restore();
+}
+
+/* ── ⚡ PASS: FOLGORE ELETTRICA ── */
+function mangaPass(a,ang,nx,ny,ux,uy,len){
+  const{x1,y1,x2,y2}=a;
+
+  // Speed lines parallele (energia)
+  for(let i=1;i<=4;i++){
+    const off=i*5,al=.35/i;
+    for(const s of[-1,1]){
+      ctx.beginPath();
+      ctx.moveTo(x1+nx*off*s,y1+ny*off*s);
+      ctx.lineTo(x2+nx*off*s,y2+ny*off*s);
+      ctx.strokeStyle=`rgba(255,220,0,${al})`;
+      ctx.lineWidth=Math.max(.4,2.2-i*.5);ctx.stroke();
+    }
+  }
+  // Glow esterno
+  ctx.shadowColor='#ffee00';ctx.shadowBlur=16;
+  ctx.strokeStyle='rgba(255,220,0,.6)';ctx.lineWidth=6;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  // Linea principale
+  ctx.shadowBlur=6;ctx.strokeStyle='#ffdd00';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  // Centro bianco brillante
+  ctx.shadowBlur=0;ctx.strokeStyle='#fffde7';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  // Zigzag elettrico sovrapposto
+  ctx.strokeStyle='rgba(255,255,180,.8)';ctx.lineWidth=1.2;
+  const steps=Math.floor(len/14);
+  ctx.beginPath();ctx.moveTo(x1,y1);
+  for(let i=1;i<steps;i++){
+    const t=i/steps,zz=(i%2?1:-1)*4;
+    ctx.lineTo(x1+ux*len*t+nx*zz,y1+uy*len*t+ny*zz);
+  }
+  ctx.lineTo(x2,y2);ctx.stroke();
+  // Particelle elettriche lungo il percorso
+  ctx.fillStyle='#fff176';
+  for(let i=0;i<Math.floor(len/18);i++){
+    const t=sr(x1,y1,i)*.85+.07;
+    const off=(sr(x2,y2,i)-.5)*10;
+    ctx.beginPath();
+    ctx.arc(x1+ux*len*t+nx*off,y1+uy*len*t+ny*off,sr(x1,x2,i)*2+.5,0,Math.PI*2);
+    ctx.fill();
+  }
+  // Punta freccia manga (concava)
+  mangaHead(x2,y2,ang,'#ffdd00','#fff9c4',14);
+  // Impact burst punta
+  impactBurst(x2,y2,'#ffdd00','#fff176',10,8);
+  // Label onomatopeico
+  if(len>55)mangaLabel(x1+ux*18+nx*18,y1+uy*18+ny*18,'⚡ FOLGORE!','#ffee00');
+}
+
+/* ── 💨 CORSA: VENTO CICLONE ── */
+function mangaRun(a,ang,nx,ny,ux,uy,len){
+  const{x1,y1,x2,y2}=a;
+
+  // Scie vento multiple (parallele ondulate)
+  for(let i=0;i<5;i++){
+    const off=(i-2)*5.5,al=.55-Math.abs(i-2)*.12;
+    ctx.beginPath();
+    // Onda sinusoidale lungo il percorso
+    const pts=Math.floor(len/8);
+    ctx.moveTo(x1+nx*off,y1+ny*off);
+    for(let j=1;j<=pts;j++){
+      const t=j/pts;
+      const wave=Math.sin(t*Math.PI*3+i)*3;
+      ctx.lineTo(x1+ux*len*t+nx*(off+wave),y1+uy*len*t+ny*(off+wave));
+    }
+    ctx.strokeStyle=`rgba(0,180,255,${al})`;
+    ctx.lineWidth=i===2?2:.9;
+    ctx.setLineDash(i===2?[]:[5,4]);ctx.stroke();ctx.setLineDash([]);
+  }
+  // Glow azzurro
+  ctx.shadowColor='#00b4ff';ctx.shadowBlur=12;
+  ctx.strokeStyle='rgba(0,180,255,.7)';ctx.lineWidth=5;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.shadowBlur=0;
+  // Centro bianco-azzurro
+  ctx.strokeStyle='#e0f8ff';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  // Trattini trasversali (effetto vento)
+  ctx.strokeStyle='rgba(120,220,255,.7)';ctx.lineWidth=1;
+  const n=Math.floor(len/20);
+  for(let i=0;i<n;i++){
+    const t=(i+.5)/n;
+    const wx=x1+ux*len*t,wy=y1+uy*len*t;
+    const side=(sr(x1,y1,i)-.5)*12;
+    ctx.beginPath();
+    ctx.moveTo(wx+nx*(side-5),wy+ny*(side-5));
+    ctx.lineTo(wx+nx*(side+5),wy+ny*(side+5));ctx.stroke();
+  }
+  // Punta
+  mangaHead(x2,y2,ang,'#00d4ff','#e0f8ff',13);
+  impactBurst(x2,y2,'#00b4ff','#e0f8ff',9,6);
+  if(len>55)mangaLabel(x1+ux*18+nx*18,y1+uy*18+ny*18,'💨 VENTO!','#00d4ff');
+}
+
+/* ── 🔥 TIRO: FUOCO INFERNALE ── */
+function mangaShot(a,ang,nx,ny,ux,uy,len){
+  const{x1,y1,x2,y2}=a;
+
+  // Speed lines convergenti verso la punta (molto drammatiche)
+  for(let i=1;i<=5;i++){
+    const off=i*6,al=.4/i;
+    for(const s of[-1,1]){
+      // Le linee partono più larghe e convergono alla punta
+      const startOff=off*1.5,endOff=off*.3;
+      ctx.beginPath();
+      ctx.moveTo(x1+nx*startOff*s,y1+ny*startOff*s);
+      ctx.lineTo(x2+nx*endOff*s,y2+ny*endOff*s);
+      ctx.strokeStyle=`rgba(255,${80-i*10},0,${al})`;
+      ctx.lineWidth=Math.max(.4,2.5-i*.45);ctx.stroke();
+    }
+  }
+  // Alone fuoco (rosso esterno)
+  ctx.shadowColor='#ff2200';ctx.shadowBlur=20;
+  ctx.strokeStyle='rgba(255,50,0,.65)';ctx.lineWidth=8;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  // Arancio medio
+  ctx.shadowBlur=10;ctx.strokeStyle='#ff6600';ctx.lineWidth=4.5;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  // Centro giallo-bianco incandescente
+  ctx.shadowBlur=4;ctx.strokeStyle='#ffcc00';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.shadowBlur=0;ctx.strokeStyle='#fffde7';ctx.lineWidth=.8;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  // Fiamme/particelle fuoco
+  const nc=Math.floor(len/12);
+  for(let i=0;i<nc;i++){
+    const t=sr(x1,y1,i)*.9+.05;
+    const off=(sr(x2,y2,i)-.5)*14;
+    const sz=sr(x1,x2,i)*3.5+.8;
+    ctx.fillStyle=`rgba(255,${Math.floor(sr(y1,y2,i)*120+80)},0,.85)`;
+    ctx.beginPath();ctx.arc(x1+ux*len*t+nx*off,y1+uy*len*t+ny*off,sz,0,Math.PI*2);ctx.fill();
+  }
+  // Punta
+  mangaHead(x2,y2,ang,'#ff3300','#ffaa00',16);
+  impactBurst(x2,y2,'#ff3300','#ffcc00',14,10);
+  if(len>55)mangaLabel(x1+ux*18+nx*20,y1+uy*18+ny*20,'🔥 FUOCO!','#ff6600');
+}
+
+/* ── Punta freccia manga (concava) ── */
+function mangaHead(x,y,ang,col,inner,sz){
+  ctx.shadowColor=col;ctx.shadowBlur=8;
+  ctx.fillStyle=col;
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.lineTo(x-sz*Math.cos(ang-.38),y-sz*Math.sin(ang-.38));
+  ctx.lineTo(x-sz*.45*Math.cos(ang),y-sz*.45*Math.sin(ang));
+  ctx.lineTo(x-sz*Math.cos(ang+.38),y-sz*Math.sin(ang+.38));
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle=inner;
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.lineTo(x-sz*.5*Math.cos(ang-.28),y-sz*.5*Math.sin(ang-.28));
+  ctx.lineTo(x-sz*.22*Math.cos(ang),y-sz*.22*Math.sin(ang));
+  ctx.lineTo(x-sz*.5*Math.cos(ang+.28),y-sz*.5*Math.sin(ang+.28));
+  ctx.closePath();ctx.fill();
+  ctx.shadowBlur=0;
+}
+
+/* ── Burst impatto alla punta ── */
+function impactBurst(x,y,col,inner,r,n){
+  ctx.fillStyle=col;ctx.strokeStyle=inner;ctx.lineWidth=.8;
+  for(let i=0;i<n;i++){
+    const a=(i/n)*Math.PI*2;
+    const l=r*(i%2===0?1:0.6);
+    ctx.beginPath();ctx.moveTo(x,y);
+    ctx.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l);
+    ctx.strokeStyle=i%2===0?col:inner;ctx.lineWidth=i%2===0?2:1;ctx.stroke();
+  }
+  // Cerchio centrale
+  ctx.fillStyle=inner;ctx.shadowColor=col;ctx.shadowBlur=6;
+  ctx.beginPath();ctx.arc(x,y,r*.22,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;
+}
+
+/* ── Label onomatopeica manga ── */
+function mangaLabel(x,y,txt,col){
+  const fs=Math.max(7,cvs.width/PR*.032);
+  ctx.save();ctx.translate(x,y);ctx.rotate(-.18);
+  ctx.font='700 '+fs+'px Bebas Neue,Barlow Condensed,sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  // Contorno nero
+  ctx.strokeStyle='rgba(0,0,0,.85)';ctx.lineWidth=3;ctx.strokeText(txt,0,0);
+  ctx.fillStyle=col;ctx.fillText(txt,0,0);
+  ctx.restore();
+}
+
+/* ── Aura manga radiante (per icone speciali) ── */
+function mangaAura(r,col,n=14){
+  for(let i=0;i<n;i++){
+    const a=(i/n)*Math.PI*2;
+    const inner=r*1.28,outer=r*(i%3===0?2.9:2.2);
+    const lw=i%3===0?2:1;
+    ctx.beginPath();ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);ctx.lineTo(Math.cos(a)*outer,Math.sin(a)*outer);
+    ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.globalAlpha=.65;ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+}
+
 
 /* ═══════════ GIOCATORI ═══════════ */
 function drawPlayers(W){S.players.forEach((p,i)=>drawPlayer(p,i===S.dragging,W));}
@@ -360,7 +719,7 @@ function sName(name,mx){
 function draw(){
   const W=cvs.width/PR,H=cvs.height/PR;ctx.clearRect(0,0,W,H);
   if(stadioCache)ctx.drawImage(stadioCache,0,0,cvs.width,cvs.height,0,0,W,H);
-  drawArrows();drawStars();drawBall();drawPlayers(W);
+  drawArrows();drawStars();drawGols();drawDifs();drawBall();drawPlayers(W);
 }
 
 /* ═══════════ POSIZIONAMENTO ═══════════ */
@@ -390,14 +749,14 @@ function hit(x,y){
 
 /* ═══════════ UNDO ═══════════ */
 function saveHistory(){
-  S.history.push({players:JSON.parse(JSON.stringify(S.players)),arrows:JSON.parse(JSON.stringify(S.arrows)),stars:JSON.parse(JSON.stringify(S.stars)),ball:S.ball?{...S.ball}:null});
+  S.history.push({players:JSON.parse(JSON.stringify(S.players)),arrows:JSON.parse(JSON.stringify(S.arrows)),stars:JSON.parse(JSON.stringify(S.stars)),gols:JSON.parse(JSON.stringify(S.gols)),difs:JSON.parse(JSON.stringify(S.difs)),ball:S.ball?{...S.ball}:null});
   if(S.history.length>20)S.history.shift();
   document.getElementById('btn-undo').style.opacity='1';
 }
 function undo(){
   if(!S.history.length){document.getElementById('status').textContent='Niente da annullare';return;}
   const prev=S.history.pop();
-  S.players=prev.players;S.arrows=prev.arrows;S.stars=prev.stars;S.ball=prev.ball;
+  S.players=prev.players;S.arrows=prev.arrows;S.stars=prev.stars;S.gols=prev.gols||[];S.difs=prev.difs||[];S.ball=prev.ball;
   if(!S.history.length)document.getElementById('btn-undo').style.opacity='.35';
   draw();document.getElementById('status').textContent='↩ Annullato';
 }
@@ -414,13 +773,19 @@ function onDown(e){
     if(S.ball&&Math.hypot(S.ball.x-x,S.ball.y-y)<=ballR()*1.3){saveHistory();S.draggingBall=true;S.dragOff={x:x-S.ball.x,y:y-S.ball.y};}
     else{const i=hit(x,y);if(i>=0){saveHistory();S.dragging=i;S.dragOff={x:x-S.players[i].x,y:y-S.players[i].y};}}
   }
-  else if(['pass','run','shot','rec'].includes(S.tool)){S.drawArrow={x1:x,y1:y,x2:x,y2:y,type:S.tool};}
+  else if(['pass','run','shot'].includes(S.tool)){S.drawArrow={x1:x,y1:y,x2:x,y2:y,type:S.tool};}
+  else if(S.tool==='rec'){saveHistory();S.difs.push({x,y});if(S.rec)capFrame();draw();}
   else if(S.tool==='sav'){saveHistory();S.stars.push({x,y});if(S.rec)capFrame();draw();}
+  else if(S.tool==='gol'){saveHistory();S.gols.push({x,y});if(S.rec)capFrame();draw();}
   else if(S.tool==='era'){
     const i=hit(x,y);if(i>=0){saveHistory();S.players.splice(i,1);draw();return;}
-    const sr=cvs.width/PR*.055;
+    const sr=cvs.width/PR*.058;
     const si=S.stars.findIndex(s=>Math.hypot(s.x-x,s.y-y)<sr*2);
     if(si>=0){saveHistory();S.stars.splice(si,1);draw();return;}
+    const gi=S.gols.findIndex(g=>Math.hypot(g.x-x,g.y-y)<sr*2);
+    if(gi>=0){saveHistory();S.gols.splice(gi,1);draw();return;}
+    const di=S.difs.findIndex(d=>Math.hypot(d.x-x,d.y-y)<sr*2);
+    if(di>=0){saveHistory();S.difs.splice(di,1);draw();return;}
     const before=S.arrows.length;
     const th=16;
     S.arrows=S.arrows.filter(a=>{const dx=a.x2-a.x1,dy=a.y2-a.y1,len=Math.hypot(dx,dy)||1;const t=Math.max(0,Math.min(1,((x-a.x1)*dx+(y-a.y1)*dy)/(len*len)));return Math.hypot(a.x1+t*dx-x,a.y1+t*dy-y)>th;});
@@ -458,7 +823,7 @@ function setTool(t){
   S.tool=t;
   document.querySelectorAll('[id^=t-]').forEach(b=>b.classList.remove('on'));
   document.getElementById('t-'+t)?.classList.add('on');
-  const msgs={sel:'Trascina giocatori o pallone',pass:'Passaggio — pallone segue!',run:'Disegna corsa',shot:'Tiro — pallone segue!',rec:'Intervento difensivo',sav:'Tocca per Superparata ⭐',era:'Tocca per rimuovere'};
+  const msgs={sel:'Trascina giocatori o pallone',pass:'Passaggio — pallone segue!',run:'Disegna corsa',shot:'Tiro — pallone segue!',rec:'Tocca per scudo Super Difesa 🛡️',sav:'Tocca per guantone Super Parata 🧤',gol:'Tocca per scarpa Super Gol 👟',era:'Tocca per rimuovere'};
   document.getElementById('status').textContent=msgs[t]||'';
   cvs.style.cursor=t==='sel'?'default':'crosshair';
 }
@@ -466,7 +831,7 @@ function setTool(t){
 /* ═══════════ ANIMAZIONE ═══════════ */
 function capFrame(){
   draw();
-  S.frames.push({id:ctx.getImageData(0,0,cvs.width,cvs.height),players:JSON.parse(JSON.stringify(S.players)),arrows:JSON.parse(JSON.stringify(S.arrows)),ball:S.ball?{...S.ball}:null,stars:JSON.parse(JSON.stringify(S.stars))});
+  S.frames.push({id:ctx.getImageData(0,0,cvs.width,cvs.height),players:JSON.parse(JSON.stringify(S.players)),arrows:JSON.parse(JSON.stringify(S.arrows)),ball:S.ball?{...S.ball}:null,stars:JSON.parse(JSON.stringify(S.stars)),gols:JSON.parse(JSON.stringify(S.gols)),difs:JSON.parse(JSON.stringify(S.difs))});
   S.curFrame=S.frames.length-1;updDots();
 }
 function toggleRec(){
@@ -478,7 +843,10 @@ function toggleRec(){
 function gotoFrame(i){
   if(i<0||i>=S.frames.length)return;S.curFrame=i;const f=S.frames[i];
   S.players=JSON.parse(JSON.stringify(f.players));S.arrows=JSON.parse(JSON.stringify(f.arrows));
-  S.ball=f.ball?{...f.ball}:null;S.stars=f.stars?JSON.parse(JSON.stringify(f.stars)):[];
+  S.ball=f.ball?{...f.ball}:null;
+  S.stars=f.stars?JSON.parse(JSON.stringify(f.stars)):[];
+  S.gols=f.gols?JSON.parse(JSON.stringify(f.gols)):[];
+  S.difs=f.difs?JSON.parse(JSON.stringify(f.difs)):[];
   updDots();draw();
 }
 function updDots(){document.getElementById('fdots').innerHTML=S.frames.map((f,i)=>`<div class="fdot${i===S.curFrame?' on':''}" onclick="gotoFrame(${i})"></div>`).join('');}
