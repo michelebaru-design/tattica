@@ -115,41 +115,61 @@ select.inp{cursor:pointer;}
   <!-- PAGES -->
   <div id="pages">
 
-    <!-- ⚽ TATTICA -->
+    <!-- ⚽ TATTICA — CAPITANO vede canvas, MEMBRI vedono preview -->
     <div id="pg-tattica" class="page on">
-      <div id="cwrap"><canvas id="fc"></canvas></div>
-      <div id="tbar">
-        <div class="tr">
-          <button class="btn bt on" id="t-sel" onclick="setTool('sel')">↖ SEL</button>
-          <button class="btn bt" id="t-pass" onclick="setTool('pass')" style="color:#ffdd00;border-color:#713f12">➡ PASS</button>
-          <button class="btn bt" id="t-run" onclick="setTool('run')" style="color:#00b4ff;border-color:#1e3a5f">⤷ CORSA</button>
-          <button class="btn bt" id="t-shot" onclick="setTool('shot')" style="color:#ff3b30;border-color:#7f1d1d">⚡ TIRO</button>
-          <button class="btn bt" id="t-rec" onclick="setTool('rec')" style="color:#d0d0d0;border-color:#555">🛡️ S.DIFESA</button>
-          <button class="btn bt" id="t-sav" onclick="setTool('sav')" style="color:#fbbf24;border-color:#92400e">⭐ PARATA</button>
-          <button class="btn bt" id="t-gol" onclick="setTool('gol')" style="color:#fb923c;border-color:#9a3412">🔥 SUPERGOL</button>
-          <button class="btn bt" id="t-mag" onclick="setTool('mag')" style="color:#fde68a;border-color:#b45309">✨ MAGIA</button>
-          <button class="btn bt" id="t-era" onclick="setTool('era')">✕ ERA</button>
-        </div>
-        <div class="tr" style="margin-top:4px">
-          <button class="btn bgh" onclick="openTeams()">👥</button>
-          <button class="btn bgh" onclick="openForms()">📋 SCHEMA</button>
-          <button class="btn bgh" id="btn-undo" onclick="undo()" style="opacity:.35">↩</button>
-          <button class="btn bgh" id="btn-rec" onclick="toggleRec()">⏺ REC</button>
-          <div style="display:flex;gap:3px;align-items:center" id="fdots"></div>
-          <button class="btn bgh" id="btn-play" onclick="playAnim()">▶</button>
-          <button class="btn bg" onclick="exportPNG()" style="margin-left:auto">📸</button>
-          <button class="btn by" onclick="exportGIF()">🎬 GIF</button>
-        </div>
-        <div class="leg" style="margin-top:3px">
-          <div class="li"><div class="ld" style="background:#ffdd00"></div>Pass</div>
-          <div class="li"><div class="ld" style="background:#00b4ff"></div>Corsa</div>
-          <div class="li"><div class="ld" style="background:#ff3b30"></div>Tiro</div>
-          <div class="li"><div class="ld" style="background:#FF6B00"></div>Parata</div>
-          <div class="li"><div class="ld" style="background:#111;border:1px solid #ef4444"></div>Gol</div>
-          <div class="li"><div class="ld" style="background:#1e3a8a;border:1px solid #f59e0b"></div>Difesa</div>
-          <div class="li"><div class="ld" style="background:#fbbf24"></div>✨</div>
+
+      <!-- Vista CAPITANO: lavagna completa -->
+      <div id="view-canvas" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+        <div id="cwrap"><canvas id="fc"></canvas></div>
+        <div id="tbar">
+          <div class="tr">
+            <button class="btn bt on" id="t-sel" onclick="setTool('sel')">↖ SEL</button>
+            <button class="btn bt" id="t-pass" onclick="setTool('pass')" style="color:#ffdd00;border-color:#713f12">➡ PASS</button>
+            <button class="btn bt" id="t-run" onclick="setTool('run')" style="color:#00b4ff;border-color:#1e3a5f">⤷ CORSA</button>
+            <button class="btn bt" id="t-shot" onclick="setTool('shot')" style="color:#ff3b30;border-color:#7f1d1d">⚡ TIRO</button>
+            <button class="btn bt" id="t-rec" onclick="setTool('rec')" style="color:#d0d0d0;border-color:#555">🛡️ S.DIFESA</button>
+            <button class="btn bt" id="t-sav" onclick="setTool('sav')" style="color:#fbbf24;border-color:#92400e">⭐ PARATA</button>
+            <button class="btn bt" id="t-gol" onclick="setTool('gol')" style="color:#fb923c;border-color:#9a3412">🔥 SUPERGOL</button>
+            <button class="btn bt" id="t-mag" onclick="setTool('mag')" style="color:#fde68a;border-color:#b45309">✨ MAGIA</button>
+            <button class="btn bt" id="t-era" onclick="setTool('era')">✕ ERA</button>
+          </div>
+          <div class="tr" style="margin-top:4px">
+            <button class="btn bgh" onclick="openTeams()">👥</button>
+            <button class="btn bgh" onclick="openForms()">📋 SCHEMA</button>
+            <button class="btn bgh" id="btn-undo" onclick="undo()" style="opacity:.35">↩</button>
+            <button class="btn bgh" id="btn-rec" onclick="toggleRec()">⏺ REC</button>
+            <div style="display:flex;gap:3px;align-items:center" id="fdots"></div>
+            <button class="btn bgh" id="btn-play" onclick="playAnim()">▶</button>
+            <button class="btn bg" onclick="exportPNG()" style="margin-left:auto">📸</button>
+            <button class="btn by" onclick="exportGIF()">🎬 GIF</button>
+            <button class="btn" onclick="pubblicaSchema()" style="background:#7c3aed;color:#e9d5ff;border:1px solid #6d28d9;flex-shrink:0">📤 PUBBLICA</button>
+          </div>
+          <div class="leg" style="margin-top:3px">
+            <div class="li"><div class="ld" style="background:#ffdd00"></div>Pass</div>
+            <div class="li"><div class="ld" style="background:#00b4ff"></div>Corsa</div>
+            <div class="li"><div class="ld" style="background:#ff3b30"></div>Tiro</div>
+            <div class="li"><div class="ld" style="background:#FF6B00"></div>Parata</div>
+            <div class="li"><div class="ld" style="background:#111;border:1px solid #ef4444"></div>Gol</div>
+            <div class="li"><div class="ld" style="background:#1e3a8a;border:1px solid #f59e0b"></div>Difesa</div>
+            <div class="li"><div class="ld" style="background:#fbbf24"></div>✨</div>
+          </div>
         </div>
       </div>
+
+      <!-- Vista MEMBRI: immagine statica pubblicata dal capitano -->
+      <div id="view-preview" style="display:none;flex-direction:column;flex:1;overflow-y:auto;align-items:center;padding:16px;gap:12px;">
+        <div style="font-family:'Bebas Neue';font-size:13px;color:var(--mut);letter-spacing:2px;text-align:center">SCHEMA DEL MISTER</div>
+        <img id="preview-img" src="" alt="Schema tattico"
+          style="width:100%;max-width:480px;border-radius:12px;border:1px solid #1a3320;display:block"/>
+        <div id="preview-empty" style="text-align:center;padding:40px 20px;color:var(--mut);font-size:14px;display:none">
+          ⚽ Nessuno schema pubblicato ancora
+        </div>
+        <div id="preview-info" style="text-align:center;display:none">
+          <div style="font-family:'Bebas Neue';font-size:16px;color:var(--txt);letter-spacing:1px" id="preview-note"></div>
+          <div style="font-size:11px;color:var(--mut);margin-top:4px" id="preview-date"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- 📺 VIDEO -->
@@ -1228,6 +1248,50 @@ window.addEventListener('resize',()=>resize());
 resize();setTool('sel');
 
 
+/* ═══════════ PUBBLICA SCHEMA ═══════════ */
+async function pubblicaSchema(){
+  if(!FB_URL){alert('Nessun database collegato.');return;}
+  const nota=prompt('📝 Nota per i membri (opzionale):\nEs: Schema corner, Marcate a uomo...','') ;
+  if(nota===null)return; // annullato
+  draw(); // assicura canvas aggiornato
+  // Comprimi in JPEG per risparmiare spazio Firebase
+  const dataUrl=cvs.toDataURL('image/jpeg',0.72);
+  const date=new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('status').textContent='⏳ Pubblicazione...';
+  await fbSet('/preview',{img:dataUrl,nota:nota||'Schema tattico',date});
+  document.getElementById('status').textContent='✅ Schema pubblicato!';
+  setTimeout(()=>document.getElementById('status').textContent='',2500);
+}
+
+async function loadPreview(){
+  const canvas=document.getElementById('view-canvas');
+  const preview=document.getElementById('view-preview');
+  if(isCaptain){
+    canvas.style.display='flex';preview.style.display='none';
+    resize();return;
+  }
+  // Membri: mostra immagine statica
+  canvas.style.display='none';preview.style.display='flex';
+  if(!FB_URL){
+    document.getElementById('preview-empty').style.display='block';
+    document.getElementById('preview-img').style.display='none';
+    document.getElementById('preview-info').style.display='none';
+    return;
+  }
+  const data=await fbGet('/preview');
+  const img=document.getElementById('preview-img');
+  const empty=document.getElementById('preview-empty');
+  const info=document.getElementById('preview-info');
+  if(data?.img){
+    img.src=data.img;img.style.display='block';
+    empty.style.display='none';info.style.display='block';
+    document.getElementById('preview-note').textContent=data.nota||'';
+    document.getElementById('preview-date').textContent='Pubblicato il '+data.date;
+  }else{
+    img.style.display='none';empty.style.display='block';info.style.display='none';
+  }
+}
+
 /* ═══════════ FIREBASE ═══════════ */
 const FB_URL=(()=>{
   const p=new URLSearchParams(location.search).get('db');
@@ -1258,6 +1322,7 @@ function toggleCaptain(){
 }
 function updateCapUI(){
   ['btn-add-video','btn-new-pagella'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=isCaptain?'block':'none';});
+  if(document.getElementById('pg-tattica').classList.contains('on'))loadPreview();
 }
 
 /* ═══════════ TAB NAV ═══════════ */
@@ -1266,19 +1331,31 @@ function goTab(tab){
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
   document.getElementById('pg-'+tab).classList.add('on');
   document.querySelector('.nb[data-tab="'+tab+'"]').classList.add('on');
-  if(tab==='tattica')resize();
+  if(tab==='tattica')loadPreview();
   else if(tab==='video')loadVideo();
   else if(tab==='pagelle')loadPagelle();
 }
 
 /* ═══════════ VIDEO ═══════════ */
-function ytId(url){const m=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&
-?#]+)/);return m?m[1]:null;}
+function openVideo(el){window.open(el.dataset.url,'_blank');}
+async function addVideo(){
+  const url=prompt('📺 URL YouTube (es: https://youtu.be/...)');
+  if(!url||!url.trim())return;
+  const title=prompt('📝 Titolo:','Highlights '+new Date().toLocaleDateString('it-IT'));
+  if(!title)return;
+  await fbPush('/highlights',{url:url.trim(),title,date:new Date().toLocaleDateString('it-IT')});
+  loadVideo();
+}
+async function delVideo(btn){
+  if(!confirm('Cancellare?'))return;
+  await fbDel('/highlights/'+btn.dataset.key);loadVideo();
+}
+function ytId(u){const m=u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?#]+)/);return m?m[1]:null;}
 
 async function loadVideo(){
   updateCapUI();
   const list=document.getElementById('video-list');
-  if(!FB_URL){list.innerHTML='<div class="empty">🔗 Apri l'app con il link completo<br><small>...?db=URL_FIREBASE</small></div>';return;}
+  if(!FB_URL){list.innerHTML='<div class="empty">🔗 Apri l&apos;app con il link completo<br><small>...?db=URL_FIREBASE</small></div>';return;}
   list.innerHTML='<div class="empty">⏳ Caricamento...</div>';
   const data=await fbGet('/highlights');
   const items=data?Object.entries(data).map(([k,v])=>({...v,_key:k})).reverse():[];
@@ -1286,26 +1363,16 @@ async function loadVideo(){
   list.innerHTML=items.map(h=>{
     const id=ytId(h.url);
     const thumb=id?'https://img.youtube.com/vi/'+id+'/hqdefault.jpg':'';
-    return '<div class="vd-card" onclick="window.open(''+h.url+'','_blank')">'
+    const del=isCaptain?'<button class="bdel" onclick="event.stopPropagation();delVideo(this)" data-key="'+h._key+'">🗑️</button>':'';
+    return '<div class="vd-card" data-url="'+h.url+'" onclick="openVideo(this)">'
       +'<div class="vd-thumb" style="background-image:url('+thumb+')">'
       +'<div class="vd-play">▶</div></div>'
       +'<div class="vd-info"><div>'
       +'<div class="vd-title">'+h.title+'</div>'
-      +'<div class="vd-date">'+( h.date||'')+'</div>'
-      +'</div>'
-      +(isCaptain?'<button class="bdel" onclick="event.stopPropagation();delVideo(''+h._key+'')">🗑️</button>':'')
-      +'</div></div>';
+      +'<div class="vd-date">'+(h.date||'')+'</div>'
+      +'</div>'+del+'</div></div>';
   }).join('');
 }
-
-async function addVideo(){
-  const url=prompt('📺 URL YouTube:
-https://youtu.be/...');if(!url||!url.trim())return;
-  const title=prompt('📝 Titolo:','Highlights '+new Date().toLocaleDateString('it-IT'));if(!title)return;
-  await fbPush('/highlights',{url:url.trim(),title,date:new Date().toLocaleDateString('it-IT')});
-  loadVideo();
-}
-async function delVideo(key){if(!confirm('Cancellare?'))return;await fbDel('/highlights/'+key);loadVideo();}
 
 /* ═══════════ PAGELLE ═══════════ */
 const VOTE_COLORS={10:'#4ade80',9:'#4ade80',8:'#86efac',7:'#fbbf24',6:'#fbbf24',5:'#fb923c',4:'#f87171',3:'#f87171',2:'#ef4444',1:'#dc2626'};
@@ -1314,7 +1381,7 @@ let pagelleData={};let curPag=null;
 
 async function loadPagelle(){
   updateCapUI();
-  if(!FB_URL){document.getElementById('pagelle-content').innerHTML='<div class="empty">🔗 Apri l'app con il link completo</div>';return;}
+  if(!FB_URL){document.getElementById('pagelle-content').innerHTML='<div class="empty">🔗 Apri l&apos;app con il link completo</div>';return;}
   const data=await fbGet('/pagelle');
   pagelleData=data||{};renderPagTabs();
 }
@@ -1324,9 +1391,17 @@ function renderPagTabs(){
   const tabs=document.getElementById('pagelle-tabs');
   if(!items.length){tabs.innerHTML='';document.getElementById('pagelle-content').innerHTML='<div class="empty">📋 Nessuna pagella ancora</div>';return;}
   if(!curPag||!pagelleData[curPag])curPag=items[0]._key;
-  tabs.innerHTML=items.map(p=>'<div class="pg-tab'+(p._key===curPag?' on':'')+'" onclick="selPag(''+p._key+'')">'+p.date.split('/').slice(0,2).join('/')+(p.note?' · '+p.note:'')+( isCaptain?'<button class="bdel" style="font-size:11px;padding:0 0 0 6px" onclick="event.stopPropagation();delPag(''+p._key+'')">✕</button>':'')+'</div>').join('');
+  tabs.innerHTML=items.map(p=>{
+    const on=p._key===curPag?' on':'';
+    const del=isCaptain?'<button class="bdel" data-key="'+p._key+'" onclick="event.stopPropagation();tapDelPag(this)" style="font-size:11px;padding:0 0 0 6px">✕</button>':'';
+    const label=p.date.split('/').slice(0,2).join('/')+(p.note?' · '+p.note:'');
+    return '<div class="pg-tab'+on+'" data-key="'+p._key+'" onclick="tapSelPag(this)">'+label+del+'</div>';
+  }).join('');
   renderPagContent(pagelleData[curPag]);
 }
+
+function tapSelPag(el){curPag=el.dataset.key;renderPagTabs();}
+async function tapDelPag(btn){if(!confirm('Cancellare questa pagella?'))return;await fbDel('/pagelle/'+btn.dataset.key);delete pagelleData[btn.dataset.key];if(curPag===btn.dataset.key)curPag=null;renderPagTabs();}
 
 function selPag(key){curPag=key;renderPagTabs();}
 
@@ -1342,19 +1417,30 @@ function renderPagContent(pag){
     const v=r.vote||'-';
     const col=VOTE_COLORS[v]||'#6b7280';
     const rc=RCOL_PG[p.r]||'#9ca3af';
+    const editBtn=isCaptain?'<button class="bdel" data-pag="'+curPag+'" data-name="'+p.n+'" onclick="tapEditVoto(this)">✏️</button>':'';
     return '<div class="pg-card">'
-      +'<img class="pg-photo" src="'+cardUrl(p.n)+'" onerror="this.style.display='none'" style="border:2px solid '+rc+'"/>'
+      +'<img class="pg-photo" src="'+cardUrl(p.n)+'" onerror="this.style.display=\'none\'" style="border:2px solid '+rc+'"/>'
       +'<div class="pg-vote" style="color:'+col+';border-color:'+col+'">'+v+'</div>'
       +'<div style="flex:1"><div class="pg-name"><span class="pg-role-dot" style="background:'+rc+'"></span>'+p.n+'</div>'
-      +(r.comment?'<div class="pg-comment">"'+r.comment+'"</div>':'')
-      +'</div>'
-      +(isCaptain?'<button class="bdel" onclick="editVoto(''+curPag+'',''+p.n+'')">✏️</button>':'')
-      +'</div>';
+      +(r.comment?'<div class="pg-comment">&ldquo;'+r.comment+'&rdquo;</div>':'')
+      +'</div>'+editBtn+'</div>';
   }
 
   document.getElementById('pagelle-content').innerHTML=
     rated.map(card).join('')+
     (unrated.length?'<div class="divider"></div><div style="font-size:10px;color:var(--mut);margin-bottom:8px;font-weight:700;letter-spacing:1px">NON VOTATI</div>'+unrated.map(card).join(''):'');
+}
+
+async function tapEditVoto(btn){
+  const pagKey=btn.dataset.pag,name=btn.dataset.name;
+  const pag=pagelleData[pagKey];if(!pag)return;
+  const r=pag.ratings?.[name]||{};
+  const v=prompt('Voto per '+name+' (1-10):',r.vote||'');if(v===null)return;
+  const c=prompt('Commento:',r.comment||'');if(c===null)return;
+  if(!pag.ratings)pag.ratings={};
+  pag.ratings[name]={vote:parseInt(v)||0,comment:c};
+  await fbSet('/pagelle/'+pagKey,pag);
+  pagelleData[pagKey]=pag;renderPagTabs();
 }
 
 async function editVoto(pagKey,name){
@@ -1381,7 +1467,7 @@ function newPagella(){
     const k=p.n.replace(/[^a-z0-9]/gi,'_');
     const rc=RCOL_PG[p.r]||'#9ca3af';
     return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1a3320">'
-      +'<img src="'+cardUrl(p.n)+'" onerror="this.style.display='none'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid '+rc+'"/>'
+      +'<img src="'+cardUrl(p.n)+'" onerror="this.hidden=true" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid '+rc+'"/>'
       +'<div style="flex:1;font-size:13px;font-weight:700">'+p.n+'</div>'
       +'<input type="number" min="1" max="10" placeholder="-" id="v-'+k+'" style="width:48px;padding:4px;background:#0a150c;border:1px solid #1a3320;border-radius:6px;color:var(--acc);font-size:14px;font-weight:700;text-align:center;font-family:Bebas Neue"/>'
       +'<input placeholder="commento..." id="c-'+k+'" style="flex:2;padding:4px 8px;background:#0a150c;border:1px solid #1a3320;border-radius:6px;color:var(--txt);font-size:11px;font-family:Barlow Condensed"/>'
@@ -1410,6 +1496,7 @@ function closePagella(){document.getElementById('mod-pagella').style.display='no
 /* ═══════════ INIT ═══════════ */
 if(isCaptain)document.getElementById('btn-cap').textContent='👑';
 updateCapUI();
+loadPreview();
 </script>
 </body>
 </html>
