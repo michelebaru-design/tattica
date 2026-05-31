@@ -1389,7 +1389,7 @@ function goTab(tab){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
   document.getElementById('pg-'+tab).classList.add('on');
-  document.querySelector(\`.nb[data-tab="${tab}"]\`).classList.add('on');
+  document.querySelector('.nb[data-tab="'+tab+'"]').classList.add('on');
   if(tab==='tattica'){resize();}
   else{loadTab(tab);}
 }
