@@ -1451,7 +1451,8 @@ function renderPagContent(pag){
   const allP=allPlayers();
 
   function card(p){
-    const r=ratings[p.n]||{};
+    const k=p.n.replace(/[^a-z0-9]/gi,'_');
+    const r=ratings[k]||ratings[p.n]||{}; // compatibile vecchio e nuovo formato
     const v=r.vote||'—';
     const col=r.vote?VOTE_COLORS[r.vote]||'#6b7280':'#374151';
     const rc=RCOL_PG[p.r]||'#9ca3af';
@@ -1490,14 +1491,14 @@ function renderPagContent(pag){
 async function tapEditVoto(btn){
   const pagKey=btn.dataset.pag,name=btn.dataset.name;
   const pag=pagelleData[pagKey];if(!pag)return;
-  const r=pag.ratings?.[name]||{};
+  const k=name.replace(/[^a-z0-9]/gi,'_');
+  const r=pag.ratings?.[k]||pag.ratings?.[name]||{};
   const v=prompt('Voto per '+name+' (1-10)\nLascia vuoto per cancellare il voto:',r.vote||'');
-  if(v===null)return; // annullato
+  if(v===null)return;
   const c=prompt('Commento (opzionale):',r.comment||'');
   if(c===null)return;
   if(!pag.ratings)pag.ratings={};
-  const voto=parseInt(v)||null; // vuoto o 0 = nessun voto
-  pag.ratings[name]={vote:voto,comment:c};
+  pag.ratings[k]={name,vote:parseInt(v)||null,comment:c};
   await fbSet('/pagelle/'+pagKey,pag);
   pagelleData[pagKey]=pag;renderPagTabs();
 }
@@ -1591,16 +1592,16 @@ async function savePagella(){
     alert('❌ Assegna almeno un giocatore a ⚪ Bianchi o ⚫ Neri');return;
   }
 
-  // Raccogli voti
+  // Raccogli voti — usa chiavi sanitizzate (Firebase non accetta punti nelle chiavi)
   const playing=[...bianchi,...neri];
   const ratings={};
   allPlayers().filter(p=>playing.includes(p.n)).forEach(p=>{
-    const k=p.n.replace(/[^a-z0-9]/gi,'_');
+    const k=p.n.replace(/[^a-z0-9]/gi,'_'); // chiave sicura per Firebase
     const vEl=document.getElementById('v-'+k);
     const cEl=document.getElementById('c-'+k);
     const v=vEl?parseInt(vEl.value)||0:0;
     const c=cEl?cEl.value||'':'';
-    ratings[p.n]={vote:v||null,comment:c};
+    ratings[k]={name:p.n,vote:v||null,comment:c}; // salva nome originale dentro
   });
 
   const note=document.getElementById('pag-note').value||'';
