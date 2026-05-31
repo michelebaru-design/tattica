@@ -1548,6 +1548,7 @@ function newPagella(){
         +'<button data-p="'+p.n+'" data-t="n" onclick="setTeam(this)" style="'+nOn+';border:1px solid #555;border-radius:5px;padding:3px 7px;font-size:11px;font-weight:700;cursor:pointer">⚫</button>'
         +'<button data-p="'+p.n+'" data-t="" onclick="setTeam(this)" style="'+xOn+';border:1px solid #374151;border-radius:5px;padding:3px 7px;font-size:11px;cursor:pointer">—</button>'
         +'<input type="number" min="1" max="10" placeholder="-" id="v-'+k+'" style="width:44px;padding:3px;background:#0a150c;border:1px solid #1a3320;border-radius:6px;color:var(--acc);font-size:13px;font-weight:700;text-align:center;font-family:Bebas Neue"/>'
+        +'<input placeholder="note..." id="c-'+k+'" style="flex:1.5;min-width:60px;padding:3px 6px;background:#0a150c;border:1px solid #1a3320;border-radius:6px;color:var(--txt);font-size:11px;font-family:Barlow Condensed"/>'
         +'</div>';
     }).join('');
   }
@@ -1580,13 +1581,15 @@ function newPagella(){
 async function savePagella(){
   const dateVal=document.getElementById('pag-date').value;
   if(!dateVal){alert('Inserisci la data');return;}
+  if(!FB_URL){alert('Nessun database collegato.\nApri l\'app con il link completo ?db=...');return;}
   const note=document.getElementById('pag-note').value;
   const date=new Date(dateVal).toLocaleDateString('it-IT');
   const teamState=window._pagTeamState||{};
   const bianchi=allPlayers().filter(p=>teamState[p.n]==='b').map(p=>p.n);
   const neri=allPlayers().filter(p=>teamState[p.n]==='n').map(p=>p.n);
+  if(!bianchi.length&&!neri.length){alert('Assegna almeno un giocatore a ⚪ Bianchi o ⚫ Neri');return;}
   const playing=[...bianchi,...neri];
-  const players=playing.length?allPlayers().filter(p=>playing.includes(p.n)):allPlayers();
+  const players=allPlayers().filter(p=>playing.includes(p.n));
   const ratings={};
   players.forEach(p=>{
     const k=p.n.replace(/[^a-z0-9]/gi,'_');
@@ -1594,8 +1597,17 @@ async function savePagella(){
     const c=document.getElementById('c-'+k)?.value||'';
     ratings[p.n]={vote:v||null,comment:c};
   });
-  await fbPush('/pagelle',{date,note,ratings,players:playing,bianchi,neri});
-  closePagella();loadPagelle();
+  try{
+    const btn=document.querySelector('#mod-pagella .btn.bg');
+    if(btn){btn.textContent='⏳ Salvataggio...';btn.disabled=true;}
+    await fbPush('/pagelle',{date,note,ratings,players:playing,bianchi,neri});
+    closePagella();
+    loadPagelle();
+  }catch(e){
+    alert('Errore salvataggio:\n'+e.message);
+    const btn=document.querySelector('#mod-pagella .btn.bg');
+    if(btn){btn.textContent='✓ SALVA';btn.disabled=false;}
+  }
 }
 function closePagella(){document.getElementById('mod-pagella').style.display='none';}
 
