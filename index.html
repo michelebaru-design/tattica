@@ -1522,32 +1522,58 @@ async function delPag(key){
 function newPagella(){
   document.getElementById('pag-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('pag-note').value='';
-  const playing=[...S.bianchi,...S.neri];
-  const allP=allPlayers();
 
-  function playerRow(p){
-    const k=p.n.replace(/[^a-z0-9]/gi,'_');
-    const rc=RCOL_PG[p.r]||'#9ca3af';
-    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1a3320">'
-      +'<img src="'+cardUrl(p.n)+'" onerror="this.hidden=true" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid '+rc+'"/>'
-      +'<div style="flex:1;font-size:13px;font-weight:700;color:var(--txt)">'+p.n+'</div>'
-      +'<input type="number" min="1" max="10" placeholder="-" id="v-'+k+'" style="width:48px;padding:4px;background:#0a150c;border:1px solid #1a3320;border-radius:6px;color:var(--acc);font-size:14px;font-weight:700;text-align:center;font-family:Bebas Neue"/>'
-      +'<input placeholder="commento..." id="c-'+k+'" style="flex:2;padding:4px 8px;background:#0a150c;border:1px solid #1a3320;border-radius:6px;color:var(--txt);font-size:11px;font-family:Barlow Condensed"/>'
-      +'</div>';
+  // Mappa team corrente come SUGGERIMENTO (modificabile)
+  const sugB=new Set(S.bianchi);
+  const sugN=new Set(S.neri);
+
+  // Stato locale squadre per questo form
+  const teamState={};
+  allPlayers().forEach(p=>{
+    teamState[p.n]=sugB.has(p.n)?'b':sugN.has(p.n)?'n':'';
+  });
+
+  function buildRows(){
+    return allPlayers().map(p=>{
+      const k=p.n.replace(/[^a-z0-9]/gi,'_');
+      const t=teamState[p.n];
+      const rc=RCOL_PG[p.r]||'#9ca3af';
+      const bOn=t==='b'?'background:#bdbdbd;color:#111':'background:#0a150c;color:#6b7280';
+      const nOn=t==='n'?'background:#555;color:#fff':'background:#0a150c;color:#6b7280';
+      const xOn=t===''?'background:#374151;color:#9ca3af':'background:#0a150c;color:#374151';
+      return '<div id="row-'+k+'" style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #1a3320">'
+        +'<img src="'+cardUrl(p.n)+'" onerror="this.hidden=true" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid '+rc+';flex-shrink:0"/>'
+        +'<div style="flex:1;font-size:12px;font-weight:700;color:var(--txt)">'+p.n+'</div>'
+        +'<button data-p="'+p.n+'" data-t="b" onclick="setTeam(this)" style="'+bOn+';border:1px solid #555;border-radius:5px;padding:3px 7px;font-size:11px;font-weight:700;cursor:pointer">⚪</button>'
+        +'<button data-p="'+p.n+'" data-t="n" onclick="setTeam(this)" style="'+nOn+';border:1px solid #555;border-radius:5px;padding:3px 7px;font-size:11px;font-weight:700;cursor:pointer">⚫</button>'
+        +'<button data-p="'+p.n+'" data-t="" onclick="setTeam(this)" style="'+xOn+';border:1px solid #374151;border-radius:5px;padding:3px 7px;font-size:11px;cursor:pointer">—</button>'
+        +'<input type="number" min="1" max="10" placeholder="-" id="v-'+k+'" style="width:44px;padding:3px;background:#0a150c;border:1px solid #1a3320;border-radius:6px;color:var(--acc);font-size:13px;font-weight:700;text-align:center;font-family:Bebas Neue"/>'
+        +'</div>';
+    }).join('');
   }
 
-  function teamHeader(label,color){
-    return '<div style="font-family:Bebas Neue;font-size:14px;letter-spacing:1px;color:'+color+';padding:8px 0 4px;border-bottom:2px solid '+color+'">'+label+'</div>';
-  }
-
-  const bianchiPlayers=allP.filter(p=>S.bianchi.includes(p.n));
-  const neriPlayers=allP.filter(p=>S.neri.includes(p.n));
+  // Funzione globale per cambiare squadra dal click
+  window._pagTeamState=teamState;
+  window.setTeam=function(btn){
+    const name=btn.dataset.p;
+    const t=btn.dataset.t;
+    window._pagTeamState[name]=t;
+    // Aggiorna stile bottoni della riga
+    const k=name.replace(/[^a-z0-9]/gi,'_');
+    const row=document.getElementById('row-'+k);
+    if(!row)return;
+    const btns=row.querySelectorAll('button[data-t]');
+    btns.forEach(b=>{
+      const active=b.dataset.t===t;
+      if(b.dataset.t==='b'){b.style.background=active?'#bdbdbd':'#0a150c';b.style.color=active?'#111':'#6b7280';}
+      else if(b.dataset.t==='n'){b.style.background=active?'#555':'#0a150c';b.style.color=active?'#fff':'#6b7280';}
+      else{b.style.background=active?'#374151':'#0a150c';b.style.color=active?'#9ca3af':'#374151';}
+    });
+  };
 
   document.getElementById('pag-players').innerHTML=
-    teamHeader('⚪ BIANCHI','#bdbdbd')+bianchiPlayers.map(playerRow).join('')+
-    teamHeader('⚫ NERI','#9e9e9e')+neriPlayers.map(playerRow).join('');
-
-  document.getElementById('pag-players').dataset.playing=JSON.stringify(playing);
+    '<div style="font-size:10px;color:var(--mut);margin-bottom:6px;letter-spacing:.5px">Assegna squadra e voto — ⚪ Bianchi · ⚫ Neri · — Non giocato</div>'
+    +buildRows();
   document.getElementById('mod-pagella').style.display='flex';
 }
 
@@ -1556,7 +1582,10 @@ async function savePagella(){
   if(!dateVal){alert('Inserisci la data');return;}
   const note=document.getElementById('pag-note').value;
   const date=new Date(dateVal).toLocaleDateString('it-IT');
-  const playing=JSON.parse(document.getElementById('pag-players').dataset.playing||'[]');
+  const teamState=window._pagTeamState||{};
+  const bianchi=allPlayers().filter(p=>teamState[p.n]==='b').map(p=>p.n);
+  const neri=allPlayers().filter(p=>teamState[p.n]==='n').map(p=>p.n);
+  const playing=[...bianchi,...neri];
   const players=playing.length?allPlayers().filter(p=>playing.includes(p.n)):allPlayers();
   const ratings={};
   players.forEach(p=>{
@@ -1565,7 +1594,7 @@ async function savePagella(){
     const c=document.getElementById('c-'+k)?.value||'';
     ratings[p.n]={vote:v||null,comment:c};
   });
-  await fbPush('/pagelle',{date,note,ratings,players:playing,bianchi:[...S.bianchi],neri:[...S.neri]});
+  await fbPush('/pagelle',{date,note,ratings,players:playing,bianchi,neri});
   closePagella();loadPagelle();
 }
 function closePagella(){document.getElementById('mod-pagella').style.display='none';}
