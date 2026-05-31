@@ -179,6 +179,7 @@ select.inp{cursor:pointer;}
           <div class="pg-title">📺 HIGHLIGHTS</div>
           <button class="badd" id="btn-add-video" onclick="addVideo()" style="display:none">+ Aggiungi</button>
         </div>
+        <div id="video-seasons" class="pg-tabs"></div>
         <div id="video-list"></div>
       </div>
     </div>
@@ -1336,31 +1337,45 @@ function goTab(tab){
   else if(tab==='pagelle')loadPagelle();
 }
 
-/* ═══════════ VIDEO ═══════════ */
+/* ═══════════ VIDEO + STAGIONI ═══════════ */
 function openVideo(el){window.open(el.dataset.url,'_blank');}
-async function addVideo(){
-  const url=prompt('📺 URL YouTube (es: https://youtu.be/...)');
-  if(!url||!url.trim())return;
-  const title=prompt('📝 Titolo:','Highlights '+new Date().toLocaleDateString('it-IT'));
-  if(!title)return;
-  await fbPush('/highlights',{url:url.trim(),title,date:new Date().toLocaleDateString('it-IT')});
-  loadVideo();
-}
-async function delVideo(btn){
-  if(!confirm('Cancellare?'))return;
-  await fbDel('/highlights/'+btn.dataset.key);loadVideo();
-}
 function ytId(u){const m=u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?#]+)/);return m?m[1]:null;}
+
+// Calcola stagione corrente automaticamente (es. maggio 2026 → "2025-26")
+function currentSeason(){
+  const now=new Date();
+  const y=now.getFullYear();
+  const m=now.getMonth()+1;
+  return m>=9?(y+'-'+(y+1).toString().slice(2)):(y-1)+'-'+y.toString().slice(2);
+}
+
+let curVideoSeason=currentSeason();
 
 async function loadVideo(){
   updateCapUI();
   const list=document.getElementById('video-list');
-  if(!FB_URL){list.innerHTML='<div class="empty">🔗 Apri l&apos;app con il link completo<br><small>...?db=URL_FIREBASE</small></div>';return;}
+  const seasonsEl=document.getElementById('video-seasons');
+  if(!FB_URL){list.innerHTML='<div class="empty">🔗 Apri l&apos;app con il link completo<br><small>...?db=URL_FIREBASE</small></div>';seasonsEl.innerHTML='';return;}
   list.innerHTML='<div class="empty">⏳ Caricamento...</div>';
   const data=await fbGet('/highlights');
-  const items=data?Object.entries(data).map(([k,v])=>({...v,_key:k})).reverse():[];
-  if(!items.length){list.innerHTML='<div class="empty">📺 Nessun video ancora</div>';return;}
-  list.innerHTML=items.map(h=>{
+  if(!data){list.innerHTML='<div class="empty">📺 Nessun video ancora</div>';seasonsEl.innerHTML='';return;}
+
+  const items=Object.entries(data).map(([k,v])=>({...v,_key:k}));
+
+  // Raccogli stagioni disponibili
+  const seasons=[...new Set(items.map(h=>h.season||'—'))].sort().reverse();
+  if(!seasons.includes(curVideoSeason))curVideoSeason=seasons[0]||currentSeason();
+
+  // Render tab stagioni
+  seasonsEl.innerHTML=seasons.map(s=>
+    '<div class="pg-tab'+(s===curVideoSeason?' on':'')+'" data-s="'+s+'" onclick="tapVideoSeason(this)">'+s+'</div>'
+  ).join('');
+
+  // Filtra per stagione corrente
+  const filtered=items.filter(h=>(h.season||'—')===curVideoSeason).reverse();
+  if(!filtered.length){list.innerHTML='<div class="empty">📺 Nessun video per questa stagione</div>';return;}
+
+  list.innerHTML=filtered.map(h=>{
     const id=ytId(h.url);
     const thumb=id?'https://img.youtube.com/vi/'+id+'/hqdefault.jpg':'';
     const del=isCaptain?'<button class="bdel" onclick="event.stopPropagation();delVideo(this)" data-key="'+h._key+'">🗑️</button>':'';
@@ -1372,6 +1387,31 @@ async function loadVideo(){
       +'<div class="vd-date">'+(h.date||'')+'</div>'
       +'</div>'+del+'</div></div>';
   }).join('');
+}
+
+function tapVideoSeason(el){
+  curVideoSeason=el.dataset.s;
+  document.querySelectorAll('#video-seasons .pg-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  loadVideo();
+}
+
+async function addVideo(){
+  const url=prompt('📺 URL YouTube (es: https://youtu.be/...)');
+  if(!url||!url.trim())return;
+  const title=prompt('📝 Titolo:','Highlights '+new Date().toLocaleDateString('it-IT'));
+  if(!title)return;
+  const defSeason=currentSeason();
+  const season=prompt('📅 Stagione:',defSeason);
+  if(!season)return;
+  await fbPush('/highlights',{url:url.trim(),title,date:new Date().toLocaleDateString('it-IT'),season:season.trim()});
+  curVideoSeason=season.trim();
+  loadVideo();
+}
+
+async function delVideo(btn){
+  if(!confirm('Cancellare questo video?'))return;
+  await fbDel('/highlights/'+btn.dataset.key);loadVideo();
 }
 
 /* ═══════════ PAGELLE ═══════════ */
@@ -1453,10 +1493,13 @@ async function tapEditVoto(btn){
   const pagKey=btn.dataset.pag,name=btn.dataset.name;
   const pag=pagelleData[pagKey];if(!pag)return;
   const r=pag.ratings?.[name]||{};
-  const v=prompt('Voto per '+name+' (1-10):',r.vote||'');if(v===null)return;
-  const c=prompt('Commento:',r.comment||'');if(c===null)return;
+  const v=prompt('Voto per '+name+' (1-10)\nLascia vuoto per cancellare il voto:',r.vote||'');
+  if(v===null)return; // annullato
+  const c=prompt('Commento (opzionale):',r.comment||'');
+  if(c===null)return;
   if(!pag.ratings)pag.ratings={};
-  pag.ratings[name]={vote:parseInt(v)||0,comment:c};
+  const voto=parseInt(v)||null; // vuoto o 0 = nessun voto
+  pag.ratings[name]={vote:voto,comment:c};
   await fbSet('/pagelle/'+pagKey,pag);
   pagelleData[pagKey]=pag;renderPagTabs();
 }
