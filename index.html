@@ -1581,32 +1581,49 @@ function newPagella(){
 async function savePagella(){
   const dateVal=document.getElementById('pag-date').value;
   if(!dateVal){alert('Inserisci la data');return;}
-  if(!FB_URL){alert('Nessun database collegato.\nApri l\'app con il link completo ?db=...');return;}
-  const note=document.getElementById('pag-note').value;
-  const date=new Date(dateVal).toLocaleDateString('it-IT');
+  if(!FB_URL){alert('❌ Nessun database.\nApri con il link lungo ?db=...');return;}
+
+  // Raccogli squadre
   const teamState=window._pagTeamState||{};
   const bianchi=allPlayers().filter(p=>teamState[p.n]==='b').map(p=>p.n);
   const neri=allPlayers().filter(p=>teamState[p.n]==='n').map(p=>p.n);
-  if(!bianchi.length&&!neri.length){alert('Assegna almeno un giocatore a ⚪ Bianchi o ⚫ Neri');return;}
+  if(!bianchi.length&&!neri.length){
+    alert('❌ Assegna almeno un giocatore a ⚪ Bianchi o ⚫ Neri');return;
+  }
+
+  // Raccogli voti
   const playing=[...bianchi,...neri];
-  const players=allPlayers().filter(p=>playing.includes(p.n));
   const ratings={};
-  players.forEach(p=>{
+  allPlayers().filter(p=>playing.includes(p.n)).forEach(p=>{
     const k=p.n.replace(/[^a-z0-9]/gi,'_');
-    const v=parseInt(document.getElementById('v-'+k)?.value)||0;
-    const c=document.getElementById('c-'+k)?.value||'';
+    const vEl=document.getElementById('v-'+k);
+    const cEl=document.getElementById('c-'+k);
+    const v=vEl?parseInt(vEl.value)||0:0;
+    const c=cEl?cEl.value||'':'';
     ratings[p.n]={vote:v||null,comment:c};
   });
+
+  const note=document.getElementById('pag-note').value||'';
+  const date=new Date(dateVal).toLocaleDateString('it-IT');
+  const payload={date,note,ratings,players:playing,bianchi,neri};
+
+  // Salva
   try{
-    const btn=document.querySelector('#mod-pagella .btn.bg');
-    if(btn){btn.textContent='⏳ Salvataggio...';btn.disabled=true;}
-    await fbPush('/pagelle',{date,note,ratings,players:playing,bianchi,neri});
+    document.getElementById('status').textContent='⏳ Salvataggio pagella...';
+    const url=FB_URL+'/tattica/pagelle.json';
+    const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const result=await resp.json();
+    if(result.error){
+      alert('❌ Errore Firebase:\n'+JSON.stringify(result.error));
+      document.getElementById('status').textContent='';return;
+    }
+    document.getElementById('status').textContent='✅ Pagella salvata!';
+    setTimeout(()=>document.getElementById('status').textContent='',2500);
     closePagella();
-    loadPagelle();
+    await loadPagelle();
   }catch(e){
-    alert('Errore salvataggio:\n'+e.message);
-    const btn=document.querySelector('#mod-pagella .btn.bg');
-    if(btn){btn.textContent='✓ SALVA';btn.disabled=false;}
+    alert('❌ Errore di rete:\n'+e.message);
+    document.getElementById('status').textContent='';
   }
 }
 function closePagella(){document.getElementById('mod-pagella').style.display='none';}
