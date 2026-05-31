@@ -1408,27 +1408,45 @@ function selPag(key){curPag=key;renderPagTabs();}
 function renderPagContent(pag){
   if(!pag){document.getElementById('pagelle-content').innerHTML='';return;}
   const ratings=pag.ratings||{};
-  const all=allPlayers();
-  const rated=all.filter(p=>ratings[p.n]?.vote);
-  const unrated=isCaptain?all.filter(p=>!ratings[p.n]?.vote):[];
+  // Usa i giocatori salvati nella pagella, altrimenti tutti
+  const playing=pag.players||null;
+  const all=playing
+    ?allPlayers().filter(p=>playing.includes(p.n))
+    :allPlayers();
 
   function card(p){
     const r=ratings[p.n]||{};
-    const v=r.vote||'-';
-    const col=VOTE_COLORS[v]||'#6b7280';
+    const v=r.vote||'—';
+    const col=r.vote?VOTE_COLORS[r.vote]||'#6b7280':'#374151';
     const rc=RCOL_PG[p.r]||'#9ca3af';
     const editBtn=isCaptain?'<button class="bdel" data-pag="'+curPag+'" data-name="'+p.n+'" onclick="tapEditVoto(this)">✏️</button>':'';
     return '<div class="pg-card">'
-      +'<img class="pg-photo" src="'+cardUrl(p.n)+'" onerror="this.style.display=\'none\'" style="border:2px solid '+rc+'"/>'
+      +'<img class="pg-photo" src="'+cardUrl(p.n)+'" onerror="this.hidden=true" style="border:2px solid '+rc+'"/>'
       +'<div class="pg-vote" style="color:'+col+';border-color:'+col+'">'+v+'</div>'
       +'<div style="flex:1"><div class="pg-name"><span class="pg-role-dot" style="background:'+rc+'"></span>'+p.n+'</div>'
       +(r.comment?'<div class="pg-comment">&ldquo;'+r.comment+'&rdquo;</div>':'')
       +'</div>'+editBtn+'</div>';
   }
 
-  document.getElementById('pagelle-content').innerHTML=
-    rated.map(card).join('')+
-    (unrated.length?'<div class="divider"></div><div style="font-size:10px;color:var(--mut);margin-bottom:8px;font-weight:700;letter-spacing:1px">NON VOTATI</div>'+unrated.map(card).join(''):'');
+  const bianchi=pag.players?pag.players.filter(n=>pag.teams?.b?.includes(n)||(pag.players.indexOf(n)<pag.players.length/2)):[];
+  const neri=pag.players?pag.players.filter(n=>!bianchi.includes(n)):[];
+  // Usa teams salvati se disponibili, altrimenti dividi a metà
+  const bList=pag.bianchi||bianchi;
+  const nList=pag.neri||neri;
+  const allList=all;
+
+  function teamSection(names,label,col){
+    const players=allList.filter(p=>names.includes(p.n));
+    if(!players.length)return '';
+    return '<div style="font-family:Bebas Neue;font-size:13px;letter-spacing:1px;color:'+col+';padding:8px 0 4px;margin-top:4px;border-bottom:2px solid '+col+'">'+label+'</div>'
+      +players.map(card).join('');
+  }
+
+  const content=bList.length||nList.length
+    ?teamSection(bList,'⚪ BIANCHI','#bdbdbd')+teamSection(nList,'⚫ NERI','#9e9e9e')
+    :allList.map(card).join('');
+
+  document.getElementById('pagelle-content').innerHTML=content;
 }
 
 async function tapEditVoto(btn){
@@ -1463,16 +1481,32 @@ async function delPag(key){
 function newPagella(){
   document.getElementById('pag-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('pag-note').value='';
-  document.getElementById('pag-players').innerHTML=allPlayers().map(p=>{
+  const playing=[...S.bianchi,...S.neri];
+  const allP=allPlayers();
+
+  function playerRow(p){
     const k=p.n.replace(/[^a-z0-9]/gi,'_');
     const rc=RCOL_PG[p.r]||'#9ca3af';
     return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1a3320">'
       +'<img src="'+cardUrl(p.n)+'" onerror="this.hidden=true" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid '+rc+'"/>'
-      +'<div style="flex:1;font-size:13px;font-weight:700">'+p.n+'</div>'
+      +'<div style="flex:1;font-size:13px;font-weight:700;color:var(--txt)">'+p.n+'</div>'
       +'<input type="number" min="1" max="10" placeholder="-" id="v-'+k+'" style="width:48px;padding:4px;background:#0a150c;border:1px solid #1a3320;border-radius:6px;color:var(--acc);font-size:14px;font-weight:700;text-align:center;font-family:Bebas Neue"/>'
       +'<input placeholder="commento..." id="c-'+k+'" style="flex:2;padding:4px 8px;background:#0a150c;border:1px solid #1a3320;border-radius:6px;color:var(--txt);font-size:11px;font-family:Barlow Condensed"/>'
       +'</div>';
-  }).join('');
+  }
+
+  function teamHeader(label,color){
+    return '<div style="font-family:Bebas Neue;font-size:14px;letter-spacing:1px;color:'+color+';padding:8px 0 4px;border-bottom:2px solid '+color+'">'+label+'</div>';
+  }
+
+  const bianchiPlayers=allP.filter(p=>S.bianchi.includes(p.n));
+  const neriPlayers=allP.filter(p=>S.neri.includes(p.n));
+
+  document.getElementById('pag-players').innerHTML=
+    teamHeader('⚪ BIANCHI','#bdbdbd')+bianchiPlayers.map(playerRow).join('')+
+    teamHeader('⚫ NERI','#9e9e9e')+neriPlayers.map(playerRow).join('');
+
+  document.getElementById('pag-players').dataset.playing=JSON.stringify(playing);
   document.getElementById('mod-pagella').style.display='flex';
 }
 
@@ -1481,14 +1515,16 @@ async function savePagella(){
   if(!dateVal){alert('Inserisci la data');return;}
   const note=document.getElementById('pag-note').value;
   const date=new Date(dateVal).toLocaleDateString('it-IT');
+  const playing=JSON.parse(document.getElementById('pag-players').dataset.playing||'[]');
+  const players=playing.length?allPlayers().filter(p=>playing.includes(p.n)):allPlayers();
   const ratings={};
-  allPlayers().forEach(p=>{
+  players.forEach(p=>{
     const k=p.n.replace(/[^a-z0-9]/gi,'_');
     const v=parseInt(document.getElementById('v-'+k)?.value)||0;
     const c=document.getElementById('c-'+k)?.value||'';
-    if(v)ratings[p.n]={vote:v,comment:c};
+    ratings[p.n]={vote:v||null,comment:c};
   });
-  await fbPush('/pagelle',{date,note,ratings});
+  await fbPush('/pagelle',{date,note,ratings,players:playing,bianchi:[...S.bianchi],neri:[...S.neri]});
   closePagella();loadPagelle();
 }
 function closePagella(){document.getElementById('mod-pagella').style.display='none';}
