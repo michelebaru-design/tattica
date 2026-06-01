@@ -1194,11 +1194,17 @@ function openTeams(){renderTeams();document.getElementById('mod-teams').style.di
 function closeTeams(){document.getElementById('mod-teams').style.display='none';positionPlayers();draw();}
 function renderTeams(){
   const allN=allPlayers().map(p=>p.n);
+  const customNames=new Set(S.extraPlayers.map(p=>p.n));
   const bench=allN.filter(n=>!S.bianchi.includes(n)&&!S.neri.includes(n));
-  document.getElementById('col-b').innerHTML=S.bianchi.map(n=>`<span class="chip cb" onclick="mv('${n}')">✕ ${n}</span>`).join('');
-  document.getElementById('col-n').innerHTML=S.neri.map(n=>`<span class="chip cn" onclick="mv('${n}')">✕ ${n}</span>`).join('');
-  document.getElementById('col-bench').innerHTML=bench.map(n=>`<span class="chip cb0" onclick="addP('${n}')">${n}</span>`).join('');
-  // Pulisci input
+  document.getElementById('col-b').innerHTML=S.bianchi.map(n=>'<span class="chip cb" onclick="mv(\''+n+'\')">✕ '+n+'</span>').join('');
+  document.getElementById('col-n').innerHTML=S.neri.map(n=>'<span class="chip cn" onclick="mv(\''+n+'\')">✕ '+n+'</span>').join('');
+  document.getElementById('col-bench').innerHTML=bench.map(n=>{
+    const isCustom=customNames.has(n);
+    return '<span class="chip cb0" style="gap:6px">'
+      +'<span onclick="addP(\''+n+'\')">'+n+'</span>'
+      +(isCustom?'<span onclick="removeCustomPlayer(\''+n+'\')" style="opacity:.6;font-size:10px">🗑️</span>':'')
+      +'</span>';
+  }).join('');
   const inp=document.getElementById('new-player-name');if(inp)inp.value='';
 }
 function mv(n){S.bianchi=S.bianchi.filter(x=>x!==n);S.neri=S.neri.filter(x=>x!==n);renderTeams();}
@@ -1209,19 +1215,40 @@ function addP(n){
 }
 
 /* ═══════════ AGGIUNGI GIOCATORE PERSONALIZZATO ═══════════ */
-function addCustomPlayer(){
+async function addCustomPlayer(){
   const inp=document.getElementById('new-player-name');
   const name=(inp?.value||'').trim();
   if(!name){inp.focus();inp.style.borderColor='#f87171';setTimeout(()=>inp.style.borderColor='',1500);return;}
-  // Controlla duplicati
   if(allPlayers().find(p=>p.n.toLowerCase()===name.toLowerCase())){
     alert('"'+name+'" è già presente nella rosa!');return;
   }
   const role=document.getElementById('new-player-role')?.value||'C';
-  S.extraPlayers.push({n:name,r:role,custom:true});
+  const player={n:name,r:role,custom:true};
+  S.extraPlayers.push(player);
+  // Salva su Firebase per renderlo permanente
+  if(FB_URL){
+    await fbSet('/extraPlayers',S.extraPlayers);
+  }
   inp.value='';
   renderTeams();
   document.getElementById('status').textContent='✅ '+name+' aggiunto!';
+}
+
+async function removeCustomPlayer(name){
+  if(!confirm('Rimuovere "'+name+'" dalla rosa?'))return;
+  S.extraPlayers=S.extraPlayers.filter(p=>p.n!==name);
+  S.bianchi=S.bianchi.filter(n=>n!==name);
+  S.neri=S.neri.filter(n=>n!==name);
+  if(FB_URL)await fbSet('/extraPlayers',S.extraPlayers);
+  renderTeams();
+}
+
+async function loadExtraPlayers(){
+  if(!FB_URL)return;
+  const data=await fbGet('/extraPlayers');
+  if(data&&Array.isArray(data)){
+    S.extraPlayers=data;
+  }
 }
 
 /* ═══════════ FORMAZIONI ═══════════ */
@@ -1633,6 +1660,10 @@ function closePagella(){document.getElementById('mod-pagella').style.display='no
 if(isCaptain)document.getElementById('btn-cap').textContent='👑';
 updateCapUI();
 loadPreview();
+// Carica giocatori extra da Firebase all'avvio
+loadExtraPlayers().then(()=>{
+  if(document.getElementById('pg-tattica').classList.contains('on'))resize();
+});
 </script>
 </body>
 </html>
