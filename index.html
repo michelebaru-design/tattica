@@ -196,6 +196,16 @@ select.inp{cursor:pointer;}
       </div>
     </div>
 
+    <!-- 📊 TREND -->
+    <div id="pg-trend" class="page">
+      <div class="pg-scroll">
+        <div class="pg-hdr">
+          <div class="pg-title">📊 TREND VOTI</div>
+        </div>
+        <div id="trend-content"><div class="empty">⏳ Caricamento...</div></div>
+      </div>
+    </div>
+
   </div><!-- /pages -->
 
   <!-- BOTTOM NAV -->
@@ -203,6 +213,7 @@ select.inp{cursor:pointer;}
     <button class="nb on" data-tab="tattica" onclick="goTab('tattica')"><span>⚽</span>Tattica</button>
     <button class="nb" data-tab="video" onclick="goTab('video')"><span>📺</span>Video</button>
     <button class="nb" data-tab="pagelle" onclick="goTab('pagelle')"><span>📋</span>Pagelle</button>
+    <button class="nb" data-tab="trend" onclick="goTab('trend')"><span>📊</span>Trend</button>
   </nav>
 
 </div><!-- /app -->
@@ -1320,6 +1331,171 @@ async function loadPreview(){
   }
 }
 
+/* ═══════════ TREND ═══════════ */
+let trendPlayer=null;
+
+async function loadTrend(){
+  const el=document.getElementById('trend-content');
+  if(!el)return;
+  if(!Object.keys(pagelleData).length&&FB_URL){
+    const data=await fbGet('/pagelle');
+    pagelleData=data||{};
+  }
+  renderTrend();
+}
+
+function renderTrend(){
+  const el=document.getElementById('trend-content');if(!el)return;
+  const pagList=Object.entries(pagelleData).map(([k,v])=>({...v,_key:k})).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!pagList.length){el.innerHTML='<div class="empty">📋 Nessuna pagella ancora<br><small>Crea delle pagelle per vedere i trend</small></div>';return;}
+  const playerNames=new Set();
+  pagList.forEach(p=>Object.entries(p.ratings||{}).forEach(([k,r])=>{if(r.vote)(r.name?playerNames.add(r.name):playerNames.add(k.replace(/_/g,' ').trim()));}));
+  const names=[...playerNames].sort();
+  if(!trendPlayer||!names.includes(trendPlayer))renderTrendOverview(el,pagList,names);
+  else renderTrendPlayer(el,pagList);
+}
+
+function getPlayerVotes(pagList,name){
+  return pagList.reduce((acc,p)=>{
+    const entry=Object.values(p.ratings||{}).find(r=>r.name===name||(r.name===undefined&&Object.entries(p.ratings||{}).find(([k])=>k.replace(/_/g,' ').trim()===name)));
+    if(entry?.vote)acc.push({date:p.date,vote:entry.vote,note:p.note||''});
+    return acc;
+  },[]);
+}
+
+function voteCol(v){return v>=8?'#4ade80':v>=7?'#86efac':v>=6?'#fbbf24':v>=5?'#fb923c':'#f87171';}
+
+function sparkline(votes,W,H){
+  if(!votes.length)return'';
+  if(votes.length<2)return'<text x="'+(W/2)+'" y="'+(H/2+4)+'" text-anchor="middle" font-size="11" font-weight="bold" fill="'+voteCol(votes[0])+'">'+votes[0]+'</text>';
+  const pts=votes.map((v,i)=>(i*(W-4)/(votes.length-1)+2)+','+(H-2-(v-1)/(9)*(H-4)));
+  const last=votes[votes.length-1];const col=voteCol(last);
+  const lp=pts[pts.length-1];
+  return'<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'
+    +'<circle cx="'+lp.split(',')[0]+'" cy="'+lp.split(',')[1]+'" r="2.5" fill="'+col+'"/>';
+}
+
+function renderTrendOverview(el,pagList,names){
+  const stats=names.map(name=>{
+    const dp=getPlayerVotes(pagList,name);
+    if(!dp.length)return null;
+    const votes=dp.map(d=>d.vote);
+    const avg=votes.reduce((s,v)=>s+v,0)/votes.length;
+    const half=Math.max(1,Math.floor(votes.length/2));
+    const rAvg=votes.slice(-half).reduce((s,v)=>s+v,0)/half;
+    const oAvg=votes.slice(0,half).reduce((s,v)=>s+v,0)/half;
+    const trend=votes.length>=2?rAvg-oAvg:0;
+    return{name,votes,avg,trend,last:votes[votes.length-1]};
+  }).filter(Boolean).sort((a,b)=>b.avg-a.avg);
+
+  const improving=stats.filter(p=>p.votes.length>=2&&p.trend>0.3).sort((a,b)=>b.trend-a.trend).slice(0,4);
+  const declining=stats.filter(p=>p.votes.length>=2&&p.trend<-0.3).sort((a,b)=>a.trend-b.trend).slice(0,4);
+
+  function card(p){
+    const col=voteCol(p.avg);
+    const tIcon=p.trend>0.5?'📈':p.trend<-0.5?'📉':p.trend>0?'↗️':p.trend<0?'↘️':'➡️';
+    const tCol=p.trend>0?'#4ade80':p.trend<0?'#f87171':'#6b7280';
+    return'<div onclick="trendPlayer=\''+p.name+'\';renderTrend()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border-radius:10px;margin-bottom:6px;cursor:pointer;border:1px solid #1a3320">'
+      +'<img src="'+cardUrl(p.name)+'" onerror="this.hidden=true" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid '+col+';flex-shrink:0"/>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--txt)">'+p.name+'</div>'
+      +'<div style="font-size:10px;color:var(--mut)">'+p.votes.length+' partite · media '+p.avg.toFixed(1)+'</div>'
+      +'</div>'
+      +'<svg width="70" height="28" style="flex-shrink:0">'+sparkline(p.votes,70,28)+'</svg>'
+      +'<div style="text-align:center;flex-shrink:0;min-width:40px">'
+      +'<div style="font-size:22px;font-weight:900;color:'+col+'">'+p.last+'</div>'
+      +'<div style="font-size:13px;color:'+tCol+'">'+tIcon+'</div>'
+      +'</div></div>';
+  }
+
+  function section(title,col,items){
+    if(!items.length)return'';
+    return'<div style="font-family:Bebas Neue;font-size:13px;color:'+col+';letter-spacing:2px;padding:10px 0 6px;border-bottom:2px solid '+col+'22;margin-bottom:8px">'+title+'</div>'+items.map(card).join('');
+  }
+
+  el.innerHTML='<div style="padding:4px 0 80px">'
+    +section('📈 IN CRESCITA','#4ade80',improving)
+    +section('📉 IN CALO','#f87171',declining)
+    +'<div style="font-family:Bebas Neue;font-size:13px;color:var(--mut);letter-spacing:2px;padding:10px 0 6px;border-bottom:2px solid #1a3320;margin-bottom:8px;margin-top:12px">TUTTI I GIOCATORI</div>'
+    +stats.map(card).join('')
+    +'</div>';
+}
+
+function renderTrendPlayer(el,pagList){
+  if(!pagList){
+    pagList=Object.entries(pagelleData).map(([k,v])=>({...v,_key:k})).sort((a,b)=>a.date.localeCompare(b.date));
+  }
+  const name=trendPlayer;
+  const dp=getPlayerVotes(pagList,name);
+  if(!dp.length){el.innerHTML='<button onclick="trendPlayer=null;renderTrend()" style="background:none;border:none;color:var(--mut);font-size:13px;cursor:pointer;padding:12px 0">‹ Torna indietro</button><div class="empty">Nessun voto per '+name+'</div>';return;}
+  const votes=dp.map(d=>d.vote);
+  const avg=(votes.reduce((s,v)=>s+v,0)/votes.length).toFixed(1);
+  const last=votes[votes.length-1];const prev=votes.length>=2?votes[votes.length-2]:null;
+  const trend=prev!==null?last-prev:0;const col=voteCol(last);
+  const max=Math.max(...votes),min=Math.min(...votes);
+
+  // SVG grafico grande
+  const W=300,H=150,PX=24,PY=12;
+  const cW=W-PX*2,cH=H-PY*2-16;
+  const n=dp.length;
+  const pts=dp.map((d,i)=>({
+    x:PX+(n===1?cW/2:i*cW/(n-1)),
+    y:PY+cH-(d.vote-1)/9*cH,
+    vote:d.vote,date:d.date
+  }));
+
+  const polyline=pts.map(p=>p.x+','+p.y).join(' ');
+  const area='M '+pts[0].x+','+pts[0].y+' '+pts.map(p=>'L '+p.x+','+p.y).join(' ')
+    +' L '+pts[n-1].x+','+(PY+cH)+' L '+pts[0].x+','+(PY+cH)+' Z';
+  const grid=[2,4,6,8,10].map(v=>{
+    const y=PY+cH-(v-1)/9*cH;
+    return'<line x1="'+PX+'" y1="'+y+'" x2="'+(W-PX)+'" y2="'+y+'" stroke="#1a3320" stroke-width="1"/>'
+      +'<text x="'+(PX-3)+'" y="'+(y+4)+'" text-anchor="end" font-size="8" fill="#3a5a40">'+v+'</text>';
+  }).join('');
+  const dotsHtml=pts.map((p,i)=>{
+    const c=voteCol(p.vote);
+    const showDate=n<=5||i===0||i===n-1;
+    const shortDate=p.date.split('/').slice(0,2).join('/');
+    return'<circle cx="'+p.x+'" cy="'+p.y+'" r="5" fill="'+c+'" stroke="#0a150c" stroke-width="1.5"/>'
+      +'<text x="'+p.x+'" y="'+(p.y-9)+'" text-anchor="middle" font-size="9" font-weight="bold" fill="'+c+'">'+p.vote+'</text>'
+      +(showDate?'<text x="'+p.x+'" y="'+(PY+cH+14)+'" text-anchor="middle" font-size="7" fill="#3a5a40">'+shortDate+'</text>':'');
+  }).join('');
+
+  el.innerHTML='<button onclick="trendPlayer=null;renderTrend()" style="background:none;border:none;color:var(--mut);font-size:13px;cursor:pointer;padding:12px 0 8px;display:block">‹ Torna indietro</button>'
+
+    // Header
+    +'<div style="background:var(--card);border:1px solid #1a3320;border-radius:12px;padding:12px;margin-bottom:10px;display:flex;align-items:center;gap:10px">'
+    +'<img src="'+cardUrl(name)+'" onerror="this.hidden=true" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid '+col+'"/>'
+    +'<div style="flex:1"><div style="font-family:Bebas Neue;font-size:18px;letter-spacing:1px">'+name.toUpperCase()+'</div>'
+    +'<div style="font-size:10px;color:var(--mut)">'+dp.length+' partite · media '+avg+' · max '+max+' · min '+min+'</div></div>'
+    +'<div style="text-align:center"><div style="font-size:28px;font-weight:900;color:'+col+'">'+last+'</div>'
+    +'<div style="font-size:11px;color:'+(trend>0?'#4ade80':trend<0?'#f87171':'#6b7280')+'">'+(trend>0?'▲+'+trend.toFixed(1):trend<0?'▼'+trend.toFixed(1):'—')+'</div></div></div>'
+
+    // Grafico
+    +'<div style="background:var(--card);border:1px solid #1a3320;border-radius:12px;padding:12px;margin-bottom:10px">'
+    +'<div style="font-family:Bebas Neue;font-size:11px;color:var(--mut);letter-spacing:2px;margin-bottom:6px">ANDAMENTO VOTI</div>'
+    +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">'
+    +'<defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+col+'" stop-opacity=".25"/><stop offset="100%" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
+    +grid
+    +'<path d="'+area+'" fill="url(#tg)"/>'
+    +'<polyline points="'+polyline+'" fill="none" stroke="'+col+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
+    +dotsHtml
+    +'</svg></div>'
+
+    // Lista dettaglio
+    +'<div style="background:var(--card);border:1px solid #1a3320;border-radius:12px;padding:12px;padding-bottom:80px">'
+    +'<div style="font-family:Bebas Neue;font-size:11px;color:var(--mut);letter-spacing:2px;margin-bottom:8px">DETTAGLIO PARTITE</div>'
+    +[...dp].reverse().map(d=>{
+      const c=voteCol(d.vote);
+      return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #1a3320">'
+        +'<div style="font-size:22px;font-weight:900;color:'+c+';width:28px;text-align:center">'+d.vote+'</div>'
+        +'<div style="flex:1"><div style="font-size:12px">'+d.date+'</div>'+(d.note?'<div style="font-size:10px;color:var(--mut)">'+d.note+'</div>':'')+'</div>'
+        +'<div style="width:56px;background:#0a150c;border-radius:3px;height:6px"><div style="width:'+(d.vote*10)+'%;height:100%;background:'+c+';border-radius:3px"></div></div>'
+        +'</div>';
+    }).join('')
+    +'</div>';
+}
+
 /* ═══════════ FIREBASE ═══════════ */
 const FB_URL=(()=>{
   const p=new URLSearchParams(location.search).get('db');
@@ -1362,6 +1538,7 @@ function goTab(tab){
   if(tab==='tattica')loadPreview();
   else if(tab==='video')loadVideo();
   else if(tab==='pagelle')loadPagelle();
+  else if(tab==='trend')loadTrend();
 }
 
 /* ═══════════ VIDEO + STAGIONI ═══════════ */
