@@ -1344,9 +1344,16 @@ async function loadTrend(){
   renderTrend();
 }
 
+function parseItDate(d){
+  if(!d)return 0;
+  const p=d.split(/[\/\s,:]+/);
+  if(p.length>=3)return new Date(p[2],p[1]-1,p[0]).getTime();
+  return 0;
+}
+
 function renderTrend(){
   const el=document.getElementById('trend-content');if(!el)return;
-  const pagList=Object.entries(pagelleData).map(([k,v])=>({...v,_key:k})).sort((a,b)=>a.date.localeCompare(b.date));
+  const pagList=Object.entries(pagelleData).map(([k,v])=>({...v,_key:k})).sort((a,b)=>parseItDate(a.date)-parseItDate(b.date));
   if(!pagList.length){el.innerHTML='<div class="empty">📋 Nessuna pagella ancora<br><small>Crea delle pagelle per vedere i trend</small></div>';return;}
   const playerNames=new Set();
   pagList.forEach(p=>Object.entries(p.ratings||{}).forEach(([k,r])=>{if(r.vote)(r.name?playerNames.add(r.name):playerNames.add(k.replace(/_/g,' ').trim()));}));
@@ -1423,7 +1430,7 @@ function renderTrendOverview(el,pagList,names){
 
 function renderTrendPlayer(el,pagList){
   if(!pagList){
-    pagList=Object.entries(pagelleData).map(([k,v])=>({...v,_key:k})).sort((a,b)=>a.date.localeCompare(b.date));
+    pagList=Object.entries(pagelleData).map(([k,v])=>({...v,_key:k})).sort((a,b)=>parseItDate(a.date)-parseItDate(b.date));
   }
   const name=trendPlayer;
   const dp=getPlayerVotes(pagList,name);
@@ -1631,7 +1638,7 @@ async function loadPagelle(){
 }
 
 function renderPagTabs(){
-  const items=Object.entries(pagelleData).map(([k,v])=>({...v,_key:k})).sort((a,b)=>b.date.localeCompare(a.date));
+  const items=Object.entries(pagelleData).map(([k,v])=>({...v,_key:k})).sort((a,b)=>parseItDate(b.date)-parseItDate(a.date));
   const tabs=document.getElementById('pagelle-tabs');
   if(!items.length){tabs.innerHTML='';document.getElementById('pagelle-content').innerHTML='<div class="empty">📋 Nessuna pagella ancora</div>';return;}
   if(!curPag||!pagelleData[curPag])curPag=items[0]._key;
